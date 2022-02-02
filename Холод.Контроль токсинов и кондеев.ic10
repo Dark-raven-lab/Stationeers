@@ -1,0 +1,71 @@
+define MaxVolatiles 0.01
+define MaxOxygen 0.05
+define TempDisableConditioners 330
+
+alias HotTank d0
+alias FilterO2 d1
+alias FilterH2 d2
+alias GasSensor d3
+alias SliderO2 d4
+alias SliderH2 d5
+
+alias ratio r15
+alias maxRatio r14
+alias warningOn r13
+alias oldState r10
+
+Main:
+yield
+l ratio GasSensor RatioOxygen
+move maxRatio MaxOxygen
+alias warningOn r11
+alias oldState r8
+alias Filter d1
+alias Slider d4
+jal Control
+
+yield
+l ratio GasSensor RatioVolatiles
+move maxRatio MaxVolatiles
+alias warningOn r12
+alias oldState r9
+alias Filter d2
+alias Slider d5
+jal Control
+
+l r0 HotTank Temperature
+sle r0 r0 TempDisableConditioners # <
+sb -2087593337 On r0
+#sb -2087593337 Open r0
+j Main
+
+Control:
+# filter control
+ls r0 Filter 0 Quantity
+ls r1 Filter 1 Quantity
+add r0 r0 r1 # summ, 0-200
+div r0 r0 2 # x / 2
+mul r0 r0 0.01 # x * 0.01
+s Slider Setting r0
+slt r1 r0 0.5 # 1 if x < 0.5
+s Slider On r1 # enable/disable
+seqz warningOn r0 # 1 if x == 0
+# end
+# Enable/Disable
+sge r0 ratio maxRatio
+s Filter On r0
+Warning:
+# if (warningOn == 1) { Flicker On }
+breqz warningOn 4 # exit if warningOn == 0
+move oldState 1
+sb -1535893860 On 1
+j ra
+# else if (warningOn == 0 && oldState == 1)
+# { Flicker Off; oldState = warningOn }
+seqz r0 warningOn # warningOn == 0
+seq r1 oldState 1 # oldState == 1
+and r0 r0 r1 # r0 = 1 && r1 == 1
+beqz r0 ra # exit if r0 == 0
+move oldState 0
+sb -1535893860 On 0
+j ra

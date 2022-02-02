@@ -1,8 +1,7 @@
-#
 define precentGeneratorsOn 0.1
 define precentGeneratorsOff 0.2
 # 1 tick = 0.5 sec
-define timeUpdateDisplay 4 # tick
+define timeUpdateDisplay 10 # tick
 define turningBeaconOnceIn 20 # tick
 define beaconDurationOfWork 6 # tick
 
@@ -38,17 +37,14 @@ define GENERATORGAS 1165997963
 start:
 yield
 # Alig Panels
-l r0 sensor Vertical
-s vertical Setting r0
-sub r0 75 r0
+l r1 sensor Vertical
+sub r0 75 r1
 div r0 r0 1.5
-s setVertical Setting r0
 sb SOLARHEAVYDUAL Vertical r0
 sb SOLARPANELDUAL Vertical r0
 sb SOLARHEAVY Vertical r0
 sb SOLARPANEL Vertical r0
 l r0 sensor Horizontal
-s sethorison Setting r0
 sb SOLARHEAVYDUAL Horizontal r0
 sb SOLARPANELDUAL Horizontal r0
 sb SOLARHEAVY Horizontal r0
@@ -72,18 +68,18 @@ bdseal beacon BeaconPower # optional
 j start
 
 SetDisplay:
-sub r0 oldCharge currentCharge # изменение за тик в дж
+sub r0 currentCharge oldCharge #
 move oldCharge currentCharge
 sgez r1 r0 # 1 if >= 0
-select r1 r1 GREEN ORANGE # если изменение >= 0, то заряд не изменился, иначе убывает
-select r1 genEnable RED r1 # если был включен генератор, то цвет красный
+select r1 r1 GREEN ORANGE #   >= 0,    ,
+select r1 genEnable RED r1 #    ,
 s display Color r1
-add counterDisplay counterDisplay 1 # увеличиваем счётчик
-mul r1 timeUpdateDisplay 2 # считаем максимальное значение счётчика
+add counterDisplay counterDisplay 1 #
+mul r1 timeUpdateDisplay 2 #
 sge r1 counterDisplay r1 # >=
-select counterDisplay r1 0 counterDisplay # обнуляем если счётчик >= максимума
-sle r1 counterDisplay timeUpdateDisplay # если меньше, то показываем проценты
-select r2 r1 1 2 # 1 проценты, 2 мощность
+select counterDisplay r1 0 counterDisplay #    >=
+sle r1 counterDisplay timeUpdateDisplay #  ,
+select r2 r1 1 2 # 1 , 2
 s display Mode r2
 select r2 r1 batteryPercent r0
 s display Setting r2
