@@ -1,0 +1,104 @@
+alias DoorInt d0
+alias VentInt d1
+alias Gas d2
+alias DoorExt d3
+alias VentExt d4
+alias Lamp d5
+alias PressInt r15
+alias PressExt r14
+alias CurPress r13
+alias PressOut r12
+s DoorInt On 1
+s DoorExt On 1
+s DoorInt Setting 0
+s DoorExt Setting 0
+s DoorInt Lock 0
+s DoorExt Lock 0
+s DoorInt Open 0
+s DoorExt Open 0
+move PressInt 2
+move PressExt 2
+Main:
+yield
+lb r0 576516101 On Sum
+seqz r0 r0 # 1 if == 0
+s DoorInt Mode r0
+s DoorExt Mode r0
+brnez r0 4 # if != 0 goto
+s DoorInt On 1
+s DoorExt On 1
+j Main
+l r1 DoorInt Setting
+l r0 DoorExt Setting
+beq r1 1 GoInt # if Open
+beq r0 1 GoExt # if Open
+j Main
+GoInt:
+l PressInt Gas Pressure # Save cur pressure
+move PressOut PressExt
+alias DoorIn d3
+alias DoorOut d0
+alias VentIn d4
+alias VentOut d1
+j Start
+GoExt:
+l PressExt Gas Pressure # Save cur pressure
+move PressOut PressInt
+alias DoorIn d0
+alias DoorOut d3
+alias VentIn d1
+alias VentOut d4
+j Start
+Start:
+brdns Lamp 2 # enable lamp if connected
+s Lamp On 1
+s DoorIn On 1 # enable door in
+s DoorIn Open 0 # closed door in
+l r0 DoorIn Open # check status door in
+bnez r0 Start # if != closed retern
+s DoorIn Setting 0 # clear door in
+s DoorIn On 0 # disable door in
+StartDepressure:
+s DoorOut Setting 0
+s VentIn Lock 1
+s VentIn Mode 1 # set mode depressure
+s VentIn On 1 # START DEPRESSURE
+s VentOut Lock 1
+s VentOut On 0
+l r1 Gas Pressure # check pressure
+l r0 DoorOut Setting # check status door
+beq r0 1 StartPressure # If out want open-go next
+l CurPress Gas Pressure
+div r0 CurPress r1
+jal WriteLcd
+brnez CurPress -5 # if press != 0 retern
+StartPressure:
+s VentIn On 0 # STOP DEPRESSURE
+s VentOut Mode 0 # First!
+s VentOut PressureExternal PressOut
+s VentOut On 1
+s DoorOut On 1
+s DoorOut Setting 0
+l r0 DoorOut Setting # check status door
+beq r0 1 End # If door out was open - exit
+l CurPress Gas Pressure
+div r0 CurPress PressOut
+jal WriteLcd
+brna CurPress PressOut 0.1 -5 # If != set retern
+End:
+s VentOut On 0
+s VentOut Lock 0
+s VentIn Lock 0
+s DoorOut Open 1
+sb 576516101 On 0
+sleep 5
+s DoorOut Setting 0
+s DoorOut On 0
+s DoorIn On 1
+brdns Lamp 2 # disable lamp if connected
+s Lamp On 0
+j Main
+WriteLcd:
+sb 576516101 On 1
+sb 576516101 Setting r0
+j ra

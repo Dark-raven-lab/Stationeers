@@ -1,0 +1,70 @@
+define MaxWatterPres 1000 # asd
+
+define MinExtTemp 870
+define PressMin 10000
+define PressMax 20000
+
+alias WatterRack d0
+alias FuelRack d1
+alias Burner d2
+alias Vent d3
+alias Sensor d4
+alias TankHotAir d5
+
+alias Count r15
+alias SMode r14
+alias PressLow r13
+alias TempHigh r12
+alias VentOn r11
+alias Alarm r10
+
+main:
+yield
+jal WatterControl
+jal PressureControll
+j main
+
+WatterControl:
+move Count 0
+ls r0 WatterRack 0 Occupied
+l r1 WatterRack Pressure
+l r2 FuelRack Pressure
+# 1
+add Count Count r0
+# 2
+slt r0 r1 MaxWatterPres # x = y < z
+add Count Count r0
+# 3
+snez r0 r2 # FuelRack Pressure != 0
+add Count Count r0
+# enable or disable
+s db Setting Count
+seq r0 Count 3 # Count == 3
+s Burner On r0
+j ra
+
+PressureControll:
+l r0 TankHotAir Pressure
+l r1 Sensor Temperature
+
+# 1 = if Pressure <= PressMax
+slt SMode r0 PressMax
+# 0 = out, 1 = in
+s Vent Mode SMode
+# invert
+select Alarm SMode 0 1
+
+# 1 = if Pressure < Min
+slt PressLow r0 PressMin
+# 1 = if Temp >= MinExtTemp
+sge TempHigh r1 MinExtTemp
+
+add Count PressLow TempHigh
+# 1 if Count == 2
+seq r0 Count 2
+# if (Pressire high) then vent on
+# else if (Press low and Temp high) vent on
+select VentOn Alarm 1 r0
+s Vent On VentOn
+
+j ra

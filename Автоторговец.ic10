@@ -1,0 +1,53 @@
+#satellite switcher V ф
+alias SatDish d0
+alias DiodeSlide d1
+alias Speaker d3
+
+alias LastID r15
+alias Vstep r13
+alias Hstep r14
+move Vstep 5
+move Hstep 10
+loop:
+sleep 0.5
+yield
+l r0 SatDish SignalStrength
+l r2 DiodeSlide On
+s db Setting r0
+s DiodeSlide Setting r0
+bgtz r2 loop # op2, if op1 > 0
+l r1 SatDish SignalID
+
+beq r1 LastID rotate
+blt r0 0.95 rotate # op3, if op1 < op2
+
+move LastID r1
+s DiodeSlide On 1
+s Speaker Mode 4
+s Speaker On 1
+sleep 3
+s Speaker On 0
+j loop
+rotate:
+l r0 SatDish Vertical
+l r1 SatDish Horizontal
+add r0 r0 Vstep # Current V + 5
+blt r0 5 Vrev # op3, if op1 < op2
+bgt r0 90 Vrev # op3, if op1 > op2
+step:
+s SatDish Vertical r0
+s SatDish Horizontal r1
+j loop
+Vrev:
+mul Vstep Vstep -1 # Vstep * -1
+max r0 r0 5
+min r0 r0 90
+add r1 r1 Hstep
+blt r1 0 Hrev # op3, if op1 < op2
+bgt r1 355 Hrev # op3, if op1 > op2
+j step
+Hrev:
+mul Hstep Hstep -1 # Vstep * -1
+max r1 r1 0
+min r1 r1 355
+j step

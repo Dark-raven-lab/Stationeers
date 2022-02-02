@@ -1,0 +1,108 @@
+# min precent charge for job
+define MinChargePrecent 0.3
+# Positions for standbay
+define posHomeX -9
+define posHomeY 0
+define posHomeZ 5
+# Position for ore unload
+define posUnloadX -6
+define posUnloadY 0
+define posUnloadZ 3
+# END SETTINGS
+
+alias posMiningX d0
+alias posMiningY d1
+alias posMiningZ d2
+alias LEVER d3
+alias ROBOT d4
+alias LCDPOWER d5
+
+alias mode r15
+alias goHome r14
+alias enable r13
+s LCDPOWER Mode 1
+s ROBOT Mode 0
+
+WaitingOn:
+yield
+l enable LEVER Open
+s ROBOT On enable
+s LCDPOWER On enable
+s LCDPOWER Mode enable
+beqz enable WaitingOn # == 0
+GoToRoam:
+l r0 posMiningX Setting
+s ROBOT TargetX r0
+l r0 posMiningY Setting
+s ROBOT TargetY r0
+l r0 posMiningZ Setting
+s ROBOT TargetZ r0
+s ROBOT Mode 5
+s db Setting 5 # set move LCD
+jal Travel # waiting to finish
+SetRoam:
+s ROBOT Mode 3
+s db Setting 3 # set move LCD
+Roaming:
+yield
+jal UpdateAllSystem
+beqz mode SetRoam
+beq mode 6 GoToUnload
+j Roaming
+GoToUnload:
+s ROBOT TargetX posUnloadX
+s ROBOT TargetY posUnloadY
+s ROBOT TargetZ posUnloadZ
+s ROBOT Mode 5
+jal Travel # waiting finish
+s ROBOT Mode 4 # Unload mode
+s db Setting 4 # set move LCD
+Unloading:
+yield
+l mode ROBOT Mode
+bnez mode Unloading # wait Unload
+Unloaded:
+bgtz goHome GoToHome
+jal UpdateAllSystem
+j GoToRoam
+
+Travel:
+yield
+yield
+l r0 ROBOT Mode
+bnez r0 Travel # wait a != 0
+j ra # On point
+
+UpdateAllSystem:
+l mode ROBOT Mode
+ls r0 ROBOT 0 ChargeRatio
+s db Setting mode # set move LCD
+s LCDPOWER Setting r0 # set power LCD
+slt goHome r0 MinChargePrecent
+select r0 goHome 4 2 # red if lowCharge
+s LCDPOWER Color r0
+# go to Home if charge <= MinCharge
+bnez goHome GoToUnload
+# if low charge go to Home
+bnez goHome GoToUnload
+# check storm
+lb r0 1997212478 Mode Maximum
+sgtz goHome r0 # r0 > 0
+# if was storm go to Home
+bnez goHome GoToUnload
+# check lever
+l enable LEVER Open
+select goHome enable 0 1
+bnez goHome GoToUnload # go if == 0
+j ra
+
+GoToHome:
+s ROBOT TargetX posHomeX
+s ROBOT TargetY posHomeY
+s ROBOT TargetZ posHomeZ
+s ROBOT Mode 5
+s db Setting 5 # set move LCD
+jal Travel
+s LEVER Open 0 # close
+move goHome 0 # is home
+j WaitingOn

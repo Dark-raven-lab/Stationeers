@@ -1,0 +1,111 @@
+define TempHysteresis 2
+define MinCO2Ratio 0.05
+define SetPressure 95
+define PressHysteresis 15
+
+alias GasSensor d0
+alias BatWarning d1
+alias RegTemp d2
+alias VentCool d3
+alias SensCool d4
+alias LCD d5
+
+alias CoolerEnable r15
+alias HeaterEnable r14
+alias PressCur r13
+alias TempCur r12
+alias Min r11
+alias Max r10
+alias Filling r9
+alias Decompression r8
+alias Warning r7
+
+move CoolerEnable 0
+move HeaterEnable 0
+s RegTemp Mode 50
+s RegTemp Setting 25
+
+Main:
+yield
+l PressCur GasSensor Pressure
+# if exist(LCD) - Write Lcd Temperature
+bdseal LCD WriteLcd
+# Check switch decompression
+bdseal BatWarning EmergencyRelease
+# Temperature Control
+jal TempControl
+# Control Pressure
+jal PressControl
+# AirComposition
+jal AirComposition
+j Main
+
+EmergencyRelease: # Alarm Depressure
+l Warning BatWarning Open
+sb -1535893860 On Warning # Flashing light
+beqz Warning ra # If closed - exit
+sgtz r0 PressCur
+sb -1129453144 On r0 # All ActVent
+sb -1129453144 Mode 1 # All ActVent
+sb 24258244 On 0 # All Heaters
+sb -739292323 On 0 # All Coolers
+j Main
+PressControl:
+sub Min SetPressure PressHysteresis
+add Max SetPressure PressHysteresis
+select Min Filling SetPressure Min
+select Max Decompression SetPressure Max
+slt Filling PressCur Min # <
+sgt Decompression PressCur Max # >
+# opt1 = 0 if opt2 == 0 & opt3 == 0
+# else 1
+or r1 Filling Decompression
+beqz r1 ra # if pressure Normal-exit
+# else - enable AirVent and return Main
+sb -1129453144 On 1
+sb -1129453144 Mode Decompression
+j Main
+AirComposition:
+l r0 GasSensor RatioPollutant # High X
+l r1 GasSensor RatioVolatiles # Hign H2
+l r2 GasSensor RatioCarbonDioxide # Low CO2
+sgtz r0 r0 # if > 0
+sgtz r1 r1 # if > 0
+slt r2 r2 MinCO2Ratio # if < norm
+add r0 r0 r1
+add r0 r0 r2
+sgtz r0 r0
+sb -1129453144 On r0
+sb -1129453144 Mode r0
+j ra
+TempControl:
+l TempCur GasSensor Temperature
+l r0 RegTemp Setting # TempSet
+sub TempCur TempCur 273.15
+sub Min r0 TempHysteresis
+add Max r0 TempHysteresis
+select Min HeaterEnable r0 Min
+select Max CoolerEnable r0 Max
+slt HeaterEnable TempCur Min # op2 < op3
+sgt CoolerEnable TempCur Max # op2 > op3
+s VentCool Mode CoolerEnable
+select r0 CoolerEnable 0 10
+s VentCool PressureExternal r0
+l r1 SensCool Pressure
+breqz CoolerEnable 3 # if 0 go
+sne r2 r1 r0 # 1 if curPres != setPres
+jr 2
+slt r2 r1 r0 # z = curPres < setPres
+s VentCool On r2
+j ra
+WriteLcd:
+s LCD Mode 0
+brnez Warning 6
+s LCD Setting TempCur
+select r0 HeaterEnable 0 2
+select r0 CoolerEnable 3 r0
+s LCD Color r0
+j ra
+s LCD Setting PressCur
+s LCD Color 4
+j ra

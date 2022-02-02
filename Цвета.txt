@@ -1,0 +1,6 @@
+<color=black><b>H<sub>2</sub></b></color>
+<color=black><b>O<sub>2</sub></b></color>
+<color=black><b>CO<sub>2</sub></b></color>
+<color=black><b>H<sub>2</sub></b><b>O<sub>2</sub></b></color>
+
+<color=red><b>ТОПЛИВО</b></color>

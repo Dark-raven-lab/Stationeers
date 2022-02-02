@@ -1,0 +1,81 @@
+define SetPress 101 # kPa
+define PressHysteresis 30 # +-
+define SetTemp 35 # C
+define TempHysteresis 5 # +-
+
+alias GasSensor d0
+alias FilterToxin d1
+alias FilterO2 d2
+
+alias CoolerEnable r15
+alias HeaterEnable r14
+alias PressCur r13
+alias TempCur r12
+alias Min r11
+alias Max r10
+alias PressLow r9
+alias PressHigh r8
+alias O2Enable r7
+# one tick
+move CoolerEnable 0
+move HeaterEnable 0
+
+Main: # curcl
+yield # waiting 0.5 sec
+l PressCur GasSensor Pressure
+
+# Control H2 and X
+bdseal FilterToxin ToxinControll
+
+# Control O2
+bdseal FilterO2 O2Controll
+
+# Temperature Control
+jal TempControl
+
+# Control Pressure and AirComposition
+jal PressControl
+j Main
+
+ToxinControll:
+l r0 GasSensor RatioPollutant # High X
+l r1 GasSensor RatioVolatiles # Hign H2
+and r0 r0 r1 # r3 = X + H2
+sgtz r0 r0 # if r3 > 0
+s FilterToxin On r0
+j ra
+
+O2Controll:
+l r0 GasSensor RatioOxygen # O2
+select Min O2Enable 1 4
+sgt O2Enable r0 Min # 1 = op2 > op3
+s FilterO2 On O2Enable
+j ra
+
+TempControl:
+l TempCur GasSensor Temperature
+add r0 SetTemp 273.15
+#sub TempCur TempCur 273.15
+sub Min r0 TempHysteresis
+add Max r0 TempHysteresis
+select Min HeaterEnable r0 Min
+select Max CoolerEnable r0 Max
+slt HeaterEnable TempCur Min # op2 < op3
+sgt CoolerEnable TempCur Max # op2 > op3
+sb -739292323 On CoolerEnable
+sb -1369060582 On CoolerEnable
+sb 24258244 On HeaterEnable
+j ra
+
+PressControl:
+sub Min SetPress PressHysteresis # min lvl
+add Max SetPress PressHysteresis # max lvl
+select Min PressLow SetPress Min
+select Max PressHigh SetPress Max
+slt PressLow PressCur Min # <
+sgt PressHigh PressCur Max # >
+select r0 PressHigh 1 0 # if pres > max ? 1 : 0
+or r1 PressLow PressHigh
+sb -1129453144 Mode r0
+sb -1129453144 On r1
+j ra

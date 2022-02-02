@@ -1,0 +1,128 @@
+alias CoolVent d0
+alias Furnace d1
+alias HotVent d2
+alias Drop d3
+alias Reg d4
+alias Button d5
+alias PressMax r15
+alias PressCur r14
+alias PressMin r13
+alias TempMax r12
+alias TempCur r11
+alias TempMin r10
+alias SetIngot r9
+s Reg Mode 11
+s HotVent Mode 1
+Main:
+yield
+move PressMin 100
+move PressMax 1200
+move TempMax 5000
+l r0 Reg Setting
+beq r0 0 IngotLead
+beq r0 1 IngotGold
+beq r0 2 IngotCopper
+beq r0 3 IngotSilver
+beq r0 4 IngotNickelI
+beq r0 5 IngotIron
+beq r0 6 IngotSilicon
+beq r0 7 IngotSteel
+beq r0 8 IngotConstantan
+beq r0 9 IngotElectrum
+beq r0 10 IngotSolder
+beq r0 11 IngotInvar
+j Main
+IngotLead:
+move SetIngot 2134647745
+move TempMin 400
+j Ready
+IngotGold:
+move SetIngot 226410516
+move TempMin 600
+j Ready
+IngotCopper:
+move SetIngot -404336834
+move TempMin 600
+j Ready
+IngotSilver:
+move SetIngot -929742000
+move TempMin 600
+j Ready
+IngotNickelI:
+move SetIngot -1406385572
+move TempMin 800
+j Ready
+IngotIron:
+move SetIngot -1301215609
+move TempMin 800
+j Ready
+IngotSilicon:
+move SetIngot -290196476
+move TempMin 900
+j Ready
+IngotSteel:
+move SetIngot -654790771
+move PressMin 1000
+move TempMin 900
+j Ready
+IngotElectrum:
+move SetIngot 502280180
+move PressMin 800
+move PressMax 2400
+move TempMin 600
+j Ready
+IngotSolder:
+move SetIngot -82508479
+move PressMin 1000
+move TempMin 350
+move TempMax 550
+j Ready
+IngotInvar:
+move SetIngot -297990285
+move PressMin 18000
+move PressMax 20000
+move TempMin 1200
+move TempMax 1500
+j Ready
+IngotConstantan:
+move SetIngot 1058547521
+move PressMin 20000
+move PressMax 25000
+move TempMin 1000
+j Ready
+Ready:
+s db Setting SetIngot
+l r1 Button Open
+bgtz r1 Smelting
+j Main
+Smelting:
+yield
+l PressCur Furnace Pressure
+l TempCur Furnace Temperature
+slt r0 PressCur PressMin # PressCur < Min
+sgt r1 PressCur PressMax # PressCur > Max
+s Drop On r1
+
+slt r2 TempCur TempMin # TempCur < Min
+brgt TempCur 750 2
+add r0 r0 r2
+sb -2087593337 Open r2
+sgtz r0 r0 # if > 0
+s HotVent On r0
+sgt r3 TempCur TempMax # TempCur > Max
+s CoolVent Mode r3
+select r4 r3 0 10
+s CoolVent PressureExternal r4
+lb r1 -1252983604 Pressure Minimum
+breqz r3 3 # if 0 go
+sne r2 r1 r4 # z = curPres != setPres
+jr 2
+slt r2 r1 r4 # z = curPres < setPres
+s CoolVent On r2
+l r5 Furnace RecipeHash
+s db Setting r5
+seq r5 r5 SetIngot
+s Furnace Open r5
+l r0 Button Open
+beqz r0 Main
+j Smelting

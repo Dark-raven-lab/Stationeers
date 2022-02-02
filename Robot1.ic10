@@ -1,0 +1,67 @@
+# Position for ore mining
+define posMiningX 23
+define posMiningY 1
+define posMiningZ -1
+# Position for ore unload
+define posUnloadX -6
+define posUnloadY 0
+define posUnloadZ 3
+# Positions for standbay
+define posHomeX -9
+define posHomeY 0
+define posHomeZ 5
+# min precent charge for job
+define MinChargePrecent 0.3
+
+alias robot db
+alias mode r0
+s robot Mode RobotMode.None
+
+Initialize:
+s robot Mode RobotMode.Roam
+
+Roaming:
+yield
+l mode robot Mode
+beqz mode Initialize
+beq mode RobotMode.StorageFull Return
+j Roaming
+
+Return:
+l posX robot PositionX
+l posY robot PositionY
+l posZ robot PositionZ
+s robot TargetX -5
+s robot TargetY 0
+s robot TargetZ 3
+s robot Mode RobotMode.PathToTarget
+yield
+yield
+yield
+
+Returning:
+yield
+l mode robot Mode
+beqz mode Returned
+j Returning
+
+Returned:
+s robot Mode RobotMode.Unload
+
+Unloading:
+yield
+l mode robot Mode
+beqz mode Leave
+j Unloading
+
+Leave:
+s robot TargetX posX
+s robot TargetY posY
+s robot TargetZ posZ
+s robot Mode RobotMode.PathToTarget
+
+Leaving:
+yield
+l mode robot Mode
+beqz mode Initialize
+j Leaving

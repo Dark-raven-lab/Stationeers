@@ -1,0 +1,58 @@
+# Settings
+define Hysteresis 2
+
+# Dont touch
+alias GasSensor d0
+alias RegTemp d1
+alias LCD d4
+alias VentCool d2
+alias SensCool d3
+
+alias CoolingEnable r15
+alias HeaterEnable r14
+alias TempCur r13
+alias TempSet r12
+alias TempMin r11
+alias TempMax r10
+
+move CoolingEnable 0
+move HeaterEnable 0
+s RegTemp Mode 50
+s RegTemp Setting 25
+
+Main:
+yield
+l TempCur GasSensor Temperature
+l TempSet RegTemp Setting
+# Calculate Temp In C
+sub TempCur TempCur 273.15
+sub TempMin TempSet Hysteresis
+add TempMax TempSet Hysteresis
+
+select TempMin HeaterEnable TempSet TempMin
+select TempMax CoolingEnable TempSet TempMax
+
+slt HeaterEnable TempCur TempMin # op2 < op3
+sgt CoolingEnable TempCur TempMax # op2 > op3
+
+bdseal LCD WriteLcd
+
+sb 24258244 On HeaterEnable
+#sb -739292323 On CoolerEnable
+s VentCool Mode CoolingEnable
+select r0 CoolingEnable 0 10
+s VentCool PressureExternal r0
+
+l r1 SensCool Pressure
+round r1 r1
+sne r2 r1 r0 # 1 if op2 != op3
+s VentCool On r2
+j Main
+
+WriteLcd:
+s LCD Mode 0
+s LCD Setting TempCur
+select r0 HeaterEnable 0 2
+select r0 CoolingEnable 3 r0
+s LCD Color r0
+j ra

@@ -1,0 +1,100 @@
+alias Switch d0   # 
+alias SoketFurnace d1 #  ( )
+alias Trimmer d2 #   
+alias Sklad d3 #  
+s Trimmer Mode 10
+loop:
+yield
+l r1 Switch Activate
+bgtz r1 Activation
+l r0 Trimmer Setting
+beqz r0 loop
+mul r0 r0 6
+sub r0 r0 4
+jr r0
+j loop
+s db Setting 502280180 #1 electrum
+move r3 -916518678 #silver
+move r4 -1348105509 #gold
+move r5 3
+move r6 60
+j loop
+s db Setting -297990285 #2 invar
+move r3 1758427767 #iron
+move r4 1830218956 #nikel
+move r5 3
+move r6 280
+j loop
+s db Setting 1058547521 #3 ItemConstantanIngot
+move r3 -707307845 #copper
+move r4 1830218956 #nikel
+move r5 3
+move r6 115
+j loop
+s db Setting -82508479 #4 pripoi
+move r3 1758427767 #iron
+move r4 -190236170 #lead
+move r5 3
+move r6 50
+j loop
+s db Setting -654790771 #5 steel !!!
+move r3 1758427767 #iron
+move r4 1724793494 #coal
+move r5 1
+move r6 65 #Pass
+j loop
+s db Setting 226410516 #6 Gold
+move r3 -1348105509
+move r4 -1348105509
+move r5 4               # stack=50
+move r6 20
+j loop
+s db Setting -404336834 #7 Cu
+move r3 -707307845
+move r4 -707307845
+move r5 4               #stack=50
+move r6 20
+j loop
+s db Setting -1301215609 #8 iron
+move r3 1758427767
+move r4 1758427767
+move r5 4
+move r6 50
+j loop
+s db Setting -929742000 #9 serebro
+move r3 -916518678
+move r4 -916518678
+move r5 4
+move r6 20
+j loop
+s db Setting -290196476 #10 kremni
+move r3 1103972403
+move r4 1103972403
+move r5 4
+move r6 50 #Pass
+j loop
+Activation:
+jr r5
+push r3
+push r3
+push r4
+push r3
+Wait:
+yield
+yield
+s Sklad ClearMemory 1
+beqz sp setPress
+pop r2
+s Sklad RequestHash r2   # 
+yield
+ls r8 Sklad 1 Occupied
+l r9 Sklad ExportCount
+seqz r9 r9
+add r8 r8 r9
+beqz r8 -5
+s Sklad ClearMemory 1
+yield
+j Wait
+setPress:
+s SoketFurnace Setting r6  #        
+j loop

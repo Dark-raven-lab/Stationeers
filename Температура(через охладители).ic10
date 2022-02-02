@@ -1,0 +1,56 @@
+﻿# Settings
+define Hysteresis 2
+define UseAllDevice 0 # 1=true, 0=false
+
+# Dont touch
+alias GasSensor d0
+alias RegTemp d1
+alias LCD d4
+breq UseAllDevice 1 3
+alias Coolling d2
+alias Heating d3
+
+alias CoolerEnable r15
+alias HeaterEnable r14
+alias TempCur r13
+alias TempSet r12
+alias TempMin r11
+alias TempMax r10
+
+move CoolerEnable 0
+move HeaterEnable 0
+s RegTemp Mode 50
+s RegTemp Setting 25
+
+Main:
+yield
+l TempCur GasSensor Temperature
+l TempSet RegTemp Setting
+# Calculate Temp In C
+sub TempCur TempCur 273.15
+sub TempMin TempSet Hysteresis
+add TempMax TempSet Hysteresis
+
+select TempMin HeaterEnable TempSet TempMin
+select TempMax CoolerEnable TempSet TempMax
+
+slt HeaterEnable TempCur TempMin # op2 < op3
+sgt CoolerEnable TempCur TempMax # op2 > op3
+
+bdseal LCD WriteLcd
+
+breq UseAllDevice 1 4
+s Heating On HeaterEnable
+s Coolling On CoolerEnable
+j Main
+sb 24258244 On HeaterEnable
+sb -739292323 On CoolerEnable
+j Main
+
+WriteLcd:
+s LCD Mode 0
+s LCD Setting TempCur
+select r0 HeaterEnable 0 2
+select r0 CoolerEnable 3 r0
+s LCD Color r0
+j ra

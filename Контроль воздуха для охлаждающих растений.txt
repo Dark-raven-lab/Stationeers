@@ -1,0 +1,99 @@
+define PressSet 101
+define LockDevices 0
+define StartInColling 1
+
+alias Button d0
+alias N2RegPress d1
+alias PompTrash d2
+alias GasSensor d3
+alias Valve d4
+alias Analizator d5
+
+alias Cool r14
+alias VentEnable r13
+alias VentMode r12
+alias N2Enable r11
+alias TrashEnable r10
+alias ValveEnable r9
+alias PressCur r8
+alias PressMin r7
+alias PressMax r6
+alias PressHigh r5
+alias PressLow r4
+
+s N2RegPress Lock LockDevices
+s PompTrash Lock LockDevices
+s Valve Lock LockDevices
+move Cool StartInColling
+
+Main:
+yield
+l PressCur GasSensor Pressure
+s db Setting PressCur
+l r0 Button Open
+beq r0 1 Cooling
+j Wait
+
+Cooling:
+beq Cool 0 SetCool # if 0 go to
+jal PressControl
+move N2Enable PressLow
+move ValveEnable 0
+jal SetDevices
+j Main
+
+Wait:
+beq Cool 1 SetWait # if 1 go to
+jal PressControl
+move N2Enable 0
+move ValveEnable PressLow
+jal SetDevices
+j Main
+
+SetCool:
+jal PumpingTrash
+l PressCur Analizator Pressure
+seqz Cool PressCur # if 0=0 then go colling
+j Main
+
+SetWait:
+jal PumpingTrash
+l PressCur Analizator Pressure
+sgt Cool PressCur 0.01 # if != 0 then go Trash
+j Main
+
+PumpingTrash:
+sgt VentEnable PressCur 0.01
+move VentMode 1
+#move VentEnable 1
+move N2Enable 0
+move TrashEnable 1
+move ValveEnable 0
+j SetDevices
+
+PressControl:
+sub PressMin PressSet 15
+add PressMax PressSet 15
+
+select PressMin PressLow PressSet PressMin
+select PressMax PressHigh PressSet PressMax
+
+slt PressLow PressCur PressMin # <
+sgt PressHigh PressCur PressMax # >
+
+# if pres > max ? 1 : 0
+select VentMode PressHigh 1 0
+or VentEnable PressLow PressHigh
+move TrashEnable PressHigh
+j ra
+
+SetDevices:
+sb -1129453144 Mode VentMode
+select r0 VentMode 0 PressMax
+sb -1129453144 PressureExternal r0
+sb -1129453144 On VentEnable
+s N2RegPress On N2Enable
+s Analizator On TrashEnable
+s PompTrash On TrashEnable
+s Valve On ValveEnable
+j ra

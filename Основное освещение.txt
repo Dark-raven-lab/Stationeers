@@ -1,0 +1,55 @@
+define lowerLimit 0.2
+
+alias socketBattery d0
+alias solarSensor d1
+
+define LAMPBAT -1306415132
+define LAMPLED 1944485013
+define LAMP1 -1860064656
+define LAMP2 797794350
+define LAMP3 1847265835
+define LAMP4 555215790
+
+define WHITE 6
+define ORANGE 3
+define RED 4
+
+alias currentPrecent r15
+alias hasSun r14
+alias lampEnable r13
+alias warning r12
+alias lampColor r11
+
+main:
+yield
+l currentPrecent socketBattery Setting
+# Color main lamp
+slt r0 currentPrecent lowerLimit
+select lampColor r0 ORANGE WHITE
+
+seq lampEnable warning 0
+slt warning currentPrecent 0.05
+beq warning 1 LampSet # ignore sun
+
+# enable lamp if sun not light
+l hasSun solarSensor Activate
+seq lampEnable hasSun 0
+j LampSet
+
+LampSet:
+sb LAMP1 On lampEnable
+#sb LAMP1 Color lampColor
+sb LAMP2 On lampEnable
+#sb LAMP2 Color lampColor
+sb LAMP3 On lampEnable
+#sb LAMP3 Color lampColor
+sb LAMP4 On lampEnable
+#sb LAMP4 Color lampColor
+# smal lamp enable night
+nor r0 warning lampEnable
+sb LAMPLED Color lampColor
+sb LAMPLED On r0
+# lamp battary
+sb LAMPBAT Color RED
+sb LAMPBAT On warning
+j main

@@ -1,0 +1,100 @@
+#
+define precentGeneratorsOn 0.1
+define precentGeneratorsOff 0.2
+# 1 tick = 0.5 sec
+define timeUpdateDisplay 4 # tick
+define turningBeaconOnceIn 20 # tick
+define beaconDurationOfWork 6 # tick
+
+alias sensor d0 # required
+alias display d1 # optional
+alias beacon d2 # optional
+# DEBUG
+alias vertical d3
+alias setVertical d4
+alias sethorison d5
+
+alias counter r15
+alias genEnable r14
+alias oldCharge r13
+alias currentCharge r12
+alias maxCharge r11
+alias batteryPercent r10
+alias counterDisplay r9
+
+define GREEN 2
+define ORANGE 3
+define RED 4
+
+define BATTERYLARGE -1388288459
+define BATTERYSMALL -400115994
+define SOLARHEAVY -934345724
+define SOLARHEAVYDUAL -1545574413
+define SOLARPANEL -2045627372
+define SOLARPANELDUAL -539224550
+define GENERATORCOAL 813146305
+define GENERATORGAS 1165997963
+
+start:
+yield
+# Alig Panels
+l r0 sensor Vertical
+s vertical Setting r0
+sub r0 75 r0
+div r0 r0 1.5
+s setVertical Setting r0
+sb SOLARHEAVYDUAL Vertical r0
+sb SOLARPANELDUAL Vertical r0
+sb SOLARHEAVY Vertical r0
+sb SOLARPANEL Vertical r0
+l r0 sensor Horizontal
+s sethorison Setting r0
+sb SOLARHEAVYDUAL Horizontal r0
+sb SOLARPANELDUAL Horizontal r0
+sb SOLARHEAVY Horizontal r0
+sb SOLARPANEL Horizontal r0
+# Check Power:
+lb r0 BATTERYSMALL Charge Sum
+lb r1 BATTERYLARGE Charge Sum
+add currentCharge r0 r1 # charge = small + large batters
+lb r0 BATTERYSMALL Maximum Sum
+lb r1 BATTERYLARGE Maximum Sum
+add maxCharge r0 r1 # max charge = small + large batters
+div batteryPercent currentCharge maxCharge # calculate precent
+s db Setting batteryPercent
+# Generators
+select r0 genEnable precentGeneratorsOff precentGeneratorsOn # if generators was enabled, then charge < min
+slt genEnable batteryPercent r0 # 1 x < y
+sb GENERATORCOAL On genEnable
+sb GENERATORGAS On genEnable
+bdseal display SetDisplay # optional
+bdseal beacon BeaconPower # optional
+j start
+
+SetDisplay:
+sub r0 oldCharge currentCharge # изменение за тик в дж
+move oldCharge currentCharge
+sgez r1 r0 # 1 if >= 0
+select r1 r1 GREEN ORANGE # если изменение >= 0, то заряд не изменился, иначе убывает
+select r1 genEnable RED r1 # если был включен генератор, то цвет красный
+s display Color r1
+add counterDisplay counterDisplay 1 # увеличиваем счётчик
+mul r1 timeUpdateDisplay 2 # считаем максимальное значение счётчика
+sge r1 counterDisplay r1 # >=
+select counterDisplay r1 0 counterDisplay # обнуляем если счётчик >= максимума
+sle r1 counterDisplay timeUpdateDisplay # если меньше, то показываем проценты
+select r2 r1 1 2 # 1 проценты, 2 мощность
+s display Mode r2
+select r2 r1 batteryPercent r0
+s display Setting r2
+j ra
+
+BeaconPower: # 1 tick = 0.5 sec
+add counter counter 1 # counter + 1
+blt counter r0 ra # exit if counter < turningBeaconOnceIn
+add r0 turningBeaconOnceIn beaconDurationOfWork
+sle r1 counter r0 # if <= max
+s beacon On r1
+bnez r1 ra # wating
+move counter 0
+j ra

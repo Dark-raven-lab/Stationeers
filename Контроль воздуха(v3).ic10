@@ -1,0 +1,123 @@
+define PressHysteresis 15
+define TempHysteresis 2
+define NormCO2Ratio 0.1
+define MinCO2Ratio 0.05
+define SetPress 100
+
+alias GasSensor d0
+alias BatDecompress d1
+alias RegTemp d2
+alias Conditioner d3
+alias Filter d4
+alias LCD d5
+
+alias CoolerEnable r15
+alias HeaterEnable r14
+alias PressCur r13
+alias TempCur r12
+alias Min r11
+alias Max r10
+alias PressLow r9
+alias PressHigh r8
+alias Co2Feed r7
+alias AllDisable r3
+# one tick
+move CoolerEnable 0
+move HeaterEnable 0
+s RegTemp Mode 50
+s RegTemp Setting 25
+Main: # curcl
+yield # waiting 0.5 sec
+l PressCur GasSensor Pressure
+# Check switch decompression
+bdseal BatDecompress EmergencyRelease
+beq AllDisable 1 Main
+# if exist(LCD) - Write Lcd Temperature
+bdseal LCD WriteLcd
+# Control H2 and X
+bdseal Filter FilterControll
+# Temperature Control
+jal TempControl
+# Control Pressure and AirComposition
+jal PressControl
+j Main
+
+EmergencyRelease: # Alarm Depressure
+l r0 BatDecompress Open
+sb -1535893860 On r0 # Flashing light
+beqz r0 ra # If closed - exit
+sgtz r0 PressCur # r0 = pressure > 0
+sb -1129453144 On r0 # All ActVent
+sb -1129453144 Mode 1 # All ActVent
+sb 24258244 On 0 # All Heaters
+sb -739292323 On 0 # All Gas Coolers
+sb -1369060582 On 0 # All Water Coolers
+brdns Conditioner 2
+s Conditioner On 0
+brdns Filter 2
+s Filter On 0
+brdns LCD 2
+s LCD On 0
+s BatDecompress Open r0
+sleep 3
+bgtz r0 Main # if r0 > 0 - wating
+select AllDisable AllDisable 0 1 # invert
+j Main
+
+FilterControll:
+l r0 GasSensor RatioPollutant # High X
+l r1 GasSensor RatioVolatiles # Hign H2
+and r0 r0 r1 # r3 = X + H2
+sgtz r0 r0 # if r3 > 0
+s Filter On r0
+j ra
+
+TempControl:
+l TempCur GasSensor Temperature
+l r0 RegTemp Setting # TempSet
+add r0 r0 273.15
+#sub TempCur TempCur 273.15
+sub Min r0 TempHysteresis
+add Max r0 TempHysteresis
+select Min HeaterEnable r0 Min
+select Max CoolerEnable r0 Max
+slt HeaterEnable TempCur Min # op2 < op3
+sgt CoolerEnable TempCur Max # op2 > op3
+sb -739292323 On CoolerEnable
+sb -1369060582 On CoolerEnable
+sb 24258244 On HeaterEnable
+bdns Conditioner ra
+or r0 CoolerEnable HeaterEnable
+s Conditioner On r0
+s Conditioner Open r0
+j ra
+
+PressControl:
+sub Min SetPress PressHysteresis # min lvl
+add Max SetPress PressHysteresis # max lvl
+select Min PressLow SetPress Min
+select Max PressHigh SetPress Max
+slt PressLow PressCur Min # <
+sgt PressHigh PressCur Max # >
+select r0 PressHigh 1 0 # if pres > max ? 1 : 0
+or r1 PressLow PressHigh
+bgtz r1 VentEnable # if (need enable) DropContrCo2
+select r2 Co2Feed NormCO2Ratio MinCO2Ratio
+l r1 GasSensor RatioCarbonDioxide # CO2
+slt r1 r1 r2 # r1 = r1 < norm
+move r0 r1
+VentEnable:
+sb -1129453144 Mode r0
+sb -1129453144 On r1
+j ra
+
+WriteLcd:
+s LCD Mode 0
+s LCD Setting TempCur
+select r0 HeaterEnable 0 2
+select r0 CoolerEnable 3 r0
+s LCD Color r0
+j ra
+s LCD Setting PressCur
+s LCD Color 4
+j ra

@@ -1,0 +1,68 @@
+define CO2Ratio 0.05
+define PressSet 95
+
+alias GasSensor d0
+alias AirVent d1
+alias BatWarning d3
+
+alias PressCur r15
+alias CO2Cur r14
+alias Filling r7
+alias Decompression r6
+alias PressMin r5
+alias PressMax r4
+
+s AirVent On 0
+s AirVent PressureExternal PressSet
+
+Main:
+yield
+l r0 BatWarning Open
+l PressCur GasSensor Pressure
+
+# Check switch decompression
+beq r0 1 EmergencyRelease
+
+# Control Pressure and CO2
+jal PressControl
+
+jal AirComposition
+j Main
+
+EmergencyRelease:
+sgtz r0 PressCur
+s AirVent On r0
+s AirVent Mode 1
+j Main
+
+PressControl:
+sub PressMin PressSet 15
+add PressMax PressSet 15
+
+select PressMin Filling PressSet PressMin
+select PressMax Decompression PressSet PressMax
+
+slt Filling PressCur PressMin # <
+sgt Decompression PressCur PressMax # >
+
+# opt1 = 0 if opt2 == 0 & opt3 == 0
+# else 1
+or r1 Filling Decompression
+beqz r1 ra # if pressure Normal-exit
+# else - enable AirVent and return Main
+s AirVent On 1
+s AirVent Mode Decompression
+j Main
+
+AirComposition:
+l r0 GasSensor RatioPollutant # High X
+l r1 GasSensor RatioVolatiles # Hign H2
+l r2 GasSensor RatioCarbonDioxide # Low CO2
+sgtz r0 r0 # if > 0
+sgtz r1 r1 # if > 0
+slt r2 r2 CO2Ratio # if < norm
+add r0 r0 r1
+add r0 r0 r2
+s AirVent On r0
+s AirVent Mode r0
+j ra
