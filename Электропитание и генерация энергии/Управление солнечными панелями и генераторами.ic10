@@ -87,8 +87,8 @@ j ra
 
 BeaconPower: # 1 tick = 0.5 sec
 add counter counter 1 # counter + 1
-blt counter r0 ra # exit if counter < turningBeaconOnceIn
-add r0 turningBeaconOnceIn beaconDurationOfWork
+blt counter turningBeaconOnceIn ra # exit if counter < turningBeaconOnceIn
+add r0 turningBeaconOnceIn beaconDurationOfWork # turningBeaconOnceIn + beaconDurationOfWork
 sle r1 counter r0 # if <= max
 s beacon On r1
 bnez r1 ra # wating
