@@ -1,0 +1,128 @@
+define TEMPDROPHOTGAS 1273 # Kelvin
+define MAXOUTPUTPOMP 30
+alias RegIngot d0
+alias Button d1
+alias PumpHot d2
+alias PumpWaste d3
+alias PumpCool d4
+alias PumpHotDrop d5
+alias minPressure r15
+alias maxPressure r14
+alias minTemperature r13
+alias maxTemperature r12
+alias Ingot r11
+alias outputHotPump r10
+alias outCoolPump r9
+alias outWastePump r8
+alias furnaceTemp r7
+alias furnacePress r6
+s RegIngot Mode 12
+Stop:
+s Button Open 0
+sb 1947944864 Open 0
+sb 1944485013 On 0
+s PumpHot On 0
+s PumpWaste On 0
+s PumpCool On 0
+s PumpHotDrop On 0
+main:
+yield
+l Ingot RegIngot Setting
+move sp 0               # MinT.MinP.MaxT.MaxP
+push 000000000250000000 # Empty
+push 090000100250002000 #=900.100.2500.2000 Silicon mode 1
+push 080000100250002000 #=800.100.2500.2000 Iron mode 2
+push 060000100250002000 #=600.100.2500.2000 Gold mode 3
+push 060000100250002000 #=600.100.2500.2000 Copper mode 4
+push 060000100250002000 #=600.100.2500.2000 Silver mode 5
+push 040000100250002000 #=400.100.2500.2000 Lead mode 6
+push 080000100250002000 #=800.100.2500.2000 Nickel mode 7
+push 090001000250002000 #=900.1000.2500.2000 Steel mode 8
+push 060000800250002400 #=600.800.2500.2400 Electrum mode 9
+push 120018000150020000 #=1200.18000.1500.20000 Invar mode 10
+push 100020000250030000 #=1000.20000.2500.25000 Constantan mode 11
+push 035001000055002000 #=350.1000.550.2000 Solder mode 12
+add sp Ingot 1
+pop r0
+mod maxPressure r0 100000
+div r0 r0 100000
+floor r0 r0
+mod maxTemperature r0 10000
+div r0 r0 10000
+floor r0 r0
+mod minPressure r0 100000
+div r0 r0 100000
+floor minTemperature r0
+move sp 0
+push 0
+push -290196476     # 1 = Silicon
+push -1301215609    # 2 = Iron
+push 226410516      # 3 = Gold
+push -404336834     # 4 = Copper
+push -929742000     # 5 = Silver
+push 2134647745     # 6 = Lead
+push -1406385572    # 7 = Nikel
+push -654790771     # 8 = Steel
+push 502280180      # 9 = Electrum
+push -297990285     # 10 = Invar
+push 1058547521     # 11 = Constantan
+push -82508479      # 12 = Solder
+add sp Ingot 1      # Set number
+pop Ingot           # read for number
+s db Setting Ingot
+l r0 Button Setting # read start
+beq r0 0 main # wating for job
+Smelting:
+yield
+lb furnacePress 1947944864 Pressure Average
+seqz r0 furnacePress # 1 if pressure isNull
+nor r0 furnacePress Ingot # 1 if r0 == 0 && Ingot == 0
+beq r0 1 Stop # exit if 1
+slt r1 furnacePress minPressure # if Pressure < min
+sgt r2 furnacePress maxPressure # if Pressure > max
+lb furnaceTemp 1947944864 Temperature Average
+slt r3 furnaceTemp minTemperature # if Temp < min
+sgt r4 furnaceTemp maxTemperature # if Temp > max
+or r0 r1 r2
+or r0 r0 r3
+or r0 r0 r4
+select r0 r0 4 2
+sb 1944485013 Color r0
+sb 1944485013 On 1
+# drop hot gas and heating
+sgt r0 furnaceTemp TEMPDROPHOTGAS
+and r5 r2 r0 # enable if high press and temp good to tank
+s PumpHotDrop On r5
+or r0 r1 r3 # enable if low press or low temp
+select r0 r5 0 r0
+s PumpHot On r0
+# select speed
+or r0 r0 r5
+select outputHotPump r0 outputHotPump 0 # 0 if wating
+brge outputHotPump MAXOUTPUTPOMP 2      # jump if >=
+add outputHotPump outputHotPump 2       # ++
+s PumpHotDrop Setting outputHotPump
+s PumpHot Setting outputHotPump
+# drop waste
+select r0 r0 0 1 # 1 if temp not is good
+and r5 r2 r0 # enable if high press and temp not is good
+select outWastePump r5 outWastePump 0 # 0 if wating
+brge outWastePump MAXOUTPUTPOMP 2     # jump if >=
+add outWastePump outWastePump 2       # ++
+s PumpCool Setting outWastePump
+s PumpWaste On r5
+# cooling
+select r0 r2 0 1 # 1 if press < max
+and r0 r4 r0 # enable if high temp and press < max
+select outCoolPump r0 outCoolPump 0 # 0 if wating
+brge outCoolPump MAXOUTPUTPOMP 2    # jump if >=
+add outCoolPump outCoolPump 2       # ++
+s PumpCool Setting outCoolPump
+s PumpCool On r0
+# check job smelting
+lb r0 1947944864 RecipeHash Maximum
+seq r0 r0 Ingot # 1 if RecipeHash=Ingot
+sb 1947944864 Open r0
+l r0 Button Setting
+beq r0 0 Stop # if Lever.Closed
+j Smelting
