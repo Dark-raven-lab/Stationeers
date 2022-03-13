@@ -72,6 +72,7 @@ pop Ingot           # read for number
 s db Setting Ingot
 l r0 Button Setting # read start
 beq r0 0 main # wating for job
+sb 1944485013 On 1
 Smelting:
 yield
 lb furnacePress 1947944864 Pressure Average
@@ -88,38 +89,37 @@ or r0 r0 r3
 or r0 r0 r4
 select r0 r0 4 2
 sb 1944485013 Color r0
-sb 1944485013 On 1
-# drop hot gas and heating
-sgt r0 furnaceTemp TEMPDROPHOTGAS
-and r5 r2 r0 # enable if high press and temp good to tank
+# DROP HOT
+sgt r5 furnaceTemp TEMPDROPHOTGAS
+select r0 r5 0 1 # 1 if temp not is good
+and r5 r2 r5 # enable if high press and temp good to tank
 s PumpHotDrop On r5
-or r0 r1 r3 # enable if low press or low temp
-select r0 r5 0 r0
-s PumpHot On r0
-# select speed
-or r0 r0 r5
-select outputHotPump r0 outputHotPump 0 # 0 if wating
-brge outputHotPump MAXOUTPUTPOMP 2      # jump if >=
-add outputHotPump outputHotPump 2       # ++
-s PumpHotDrop Setting outputHotPump
-s PumpHot Setting outputHotPump
-# drop waste
-select r0 r0 0 1 # 1 if temp not is good
-and r5 r2 r0 # enable if high press and temp not is good
-select outWastePump r5 outWastePump 0 # 0 if wating
+# DROP WASTE
+and r0 r2 r0 # enable if high press and temp not is good
 brge outWastePump MAXOUTPUTPOMP 2     # jump if >=
 add outWastePump outWastePump 2       # ++
+select outWastePump r0 outWastePump 0 # 0 if wating
 s PumpCool Setting outWastePump
-s PumpWaste On r5
+s PumpWaste On r0
+# HOT GAS
+select r0 r0 0 1
+and r0 r0 r3 
+or r0 r1 r0 # enable if low press or low temp
+s PumpHot On r0
+or r0 r0 r5
+brge outputHotPump MAXOUTPUTPOMP 2      # jump if >=
+add outputHotPump outputHotPump 2       # ++
+select outputHotPump r0 outputHotPump 0 # 0 if wating
+s PumpHotDrop Setting outputHotPump
+s PumpHot Setting outputHotPump
 # cooling
 select r0 r2 0 1 # 1 if press < max
 and r0 r4 r0 # enable if high temp and press < max
-select outCoolPump r0 outCoolPump 0 # 0 if wating
 brge outCoolPump MAXOUTPUTPOMP 2    # jump if >=
 add outCoolPump outCoolPump 2       # ++
+select outCoolPump r0 outCoolPump 0 # 0 if wating
 s PumpCool Setting outCoolPump
 s PumpCool On r0
-# check job smelting
 lb r0 1947944864 RecipeHash Maximum
 seq r0 r0 Ingot # 1 if RecipeHash=Ingot
 sb 1947944864 Open r0
