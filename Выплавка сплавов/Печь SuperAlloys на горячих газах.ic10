@@ -1,0 +1,119 @@
+define TEMPDROPHOTGAS 1273 # Kelvin
+define MAXOUTPUTPOMP 30
+alias RegIngot d0
+alias Button d1
+alias PumpHot d2
+alias PumpWaste d3
+alias PumpCool d4
+alias PumpHotOut d5
+alias minPressure r15
+alias maxPressure r14
+alias minTemperature r13
+alias maxTemperature r12
+alias Ingot r11
+alias speedIn r10
+alias speedOut r9
+alias hotSupply r8
+alias hotDrop r7
+s RegIngot Mode 5
+Stop:
+yield
+s Button Open 0
+sb 545937711 Lock 0
+sb 545937711 Open 0
+sb 545937711 On 0
+sb 1944485013 On 0
+s PumpHotOut On 0
+s PumpWaste On 0
+s PumpCool On 0
+s PumpHot On 0
+main:
+yield
+l Ingot RegIngot Setting
+move sp 0               # MinT.MinP.MaxT.MaxP
+push 000000000250000000 # Empty
+push 100030000250040000 #=1000.30000.2500.40000 Astroloy
+push 095025000100030000 #=950.25000.1000.30000 Hastelloy
+push 060023500250024000 #=600.23500.2500.24000 Inconel
+push 040050000080055000 #=400.50000.800.55000 Waspaloy
+push 180010000250020000 #=1800.10000.2500.20000 Stellite
+add sp Ingot 1
+pop r0
+mod maxPressure r0 100000
+div r0 r0 100000
+floor r0 r0
+mod maxTemperature r0 10000
+div r0 r0 10000
+floor r0 r0
+mod minPressure r0 100000
+div r0 r0 100000
+floor minTemperature r0
+move sp 0
+push 0
+push 412924554      # 1 = Astroloy
+push 1579842814     # 2 = Hastelloy
+push -787796599     # 3 = Inconel
+push 156348098      # 4 = Waspaloy
+push -1897868623    # 5 = Stellite
+add sp Ingot 1      # Set number
+pop Ingot           # read for number
+s db Setting Ingot
+l r0 Button Setting # read start
+beq r0 0 main # wating for job
+sb 1944485013 On 1
+sb 545937711 On 1
+sb 545937711 Lock 1
+Smelting:
+yield
+lb r2 545937711 Pressure Average
+seqz r0 r2 # 1 if pressure isNull
+nor r0 r2 Ingot # 1 if r0 == 0 && Ingot == 0
+beq r0 1 Stop # exit if 1
+slt r1 r2 minPressure # if Pressure < min
+sgt r2 r2 maxPressure # if Pressure > max
+lb r5 545937711 Temperature Average
+slt r3 r5 minTemperature # if Temp < min
+sgt r4 r5 maxTemperature # if Temp > max
+sgt r5 r5 TEMPDROPHOTGAS
+or r0 r1 r2
+or r0 r0 r3
+or r0 r0 r4
+select r0 r0 4 2
+sb 1944485013 Color r0
+# DROP HOT
+select r0 r5 0 1 # 1 if temp not is good
+and hotDrop r2 r5 # enable if high press and temp good to tank
+s PumpHotOut On hotDrop
+# DROP WASTE
+and r0 r2 r0 # enable if high press and temp not is good
+s PumpWaste On r0
+or r0 hotDrop r0
+brge speedOut MAXOUTPUTPOMP 2   # jump if >=
+add speedOut speedOut 2         # ++
+select speedOut r0 speedOut 0   # 0 if wating
+sb 545937711 SettingOutput speedOut
+select r0 r0 100 0
+s PumpHotOut Setting r0
+s PumpWaste Setting r0
+# SUPLY HOT GAS
+or hotSupply r1 r3 # enable if low press or low temp
+s PumpHot On hotSupply
+# COOLING
+select r0 r2 0 1
+and r5 r0 r4 # enable if pressure < max and high temp
+s PumpCool On r5
+or r0 r5 hotSupply
+brge speedIn MAXOUTPUTPOMP 2      # jump if >=
+add speedIn speedIn 2             # ++
+select speedIn r0 speedIn 0       # 0 if wating
+s PumpCool Setting speedIn
+s PumpHot Setting speedIn
+select r0 r0 100 0
+sb 545937711 SettingInput r0
+# check job smelting
+lb r0 545937711 RecipeHash Maximum
+seq r0 r0 Ingot # 1 if RecipeHash=Ingot
+sb 545937711 Open r0
+l r0 Button Setting
+beq r0 0 Stop # if Lever.Closed
+j Smelting
