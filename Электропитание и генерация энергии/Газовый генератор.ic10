@@ -1,0 +1,74 @@
+define setPess 150
+define setTemp 305
+
+define KpPress 10 #Proportional gain
+define KdPress 0.2 #TDerivative gain
+
+define KpTemp 1.5 #Proportional gain
+define KdTemp 0.2 #TDerivative gain
+
+#Devices
+alias DeviceIn d0
+alias DeviceOut d1
+alias Generator d2
+alias GasSensor d3
+
+#Registers
+alias inputSignal r9
+
+alias Perror r6 #Error current
+alias PprevError r7 #Error previous cycle
+alias PDeriv r8 #TDerivative
+alias PKpE0 r9 #Proportional gain times Terror
+alias PKdTDeriv r10 #TDerivative gain times Tderivative
+
+alias Terror r11 #Error current
+alias TprevError r12 #Error previous cycle
+alias TDeriv r13 #TDerivative
+alias TKpE0 r14 #Proportional gain times Terror
+alias TKdTDeriv r15 #TDerivative gain times Tderivative
+
+#Static values
+define chT 0.5 #Change in time
+
+Start:
+yield
+# read enable
+l r0 Generator On
+
+# enabled devices
+s DeviceIn On r0
+s DeviceOut On r0
+
+# exit if generator disable
+beqz r0 Start
+
+#Proportional Tderivative pressure control
+l inputSignal GasSensor Pressure
+#Save prev Terror, new Terror
+move PprevError Perror
+sub Perror inputSignal setPess
+#Change in Terror, Tderivative
+sub r0 PprevError Perror
+div PDeriv r0 chT
+#Final calcs
+mul PKpE0 KpPress Perror
+mul PKdTDeriv KdPress PDeriv
+add r0 PKpE0 PKdTDeriv
+s DeviceOut Setting r0
+
+#Proportional Tderivative temperature control
+l inputSignal GasSensor Temperature
+#Save prev Terror, new Terror
+move TprevError Terror
+sub Terror inputSignal setTemp
+#Change in Terror, Tderivative
+sub r0 TprevError Terror
+div TDeriv r0 chT
+#Final calcs
+mul TKpE0 KpTemp Terror
+mul TKdTDeriv KdTemp TDeriv
+add r0 TKpE0 TKdTDeriv
+s DeviceIn Setting r0
+
+j Start
