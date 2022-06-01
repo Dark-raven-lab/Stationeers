@@ -1,6 +1,6 @@
 define MaxPresInGasTank 25000 # pA
-define MinTempinDirtyTank 380 # Kelvin
-define MaxTempInGasTank 323 # 50 C
+define MinTempinDirtyTank 298 # Kelvin
+define MaxTempInGasTank 318 # 45 C
 
 alias GasTank d0
 alias Filter d1
@@ -37,7 +37,7 @@ l r1 DirtyTank Temperature
 slt r1 r1 MinTempinDirtyTank # <
 add r0 r0 r1
 
-# GasTank.Temp < MinTempinDirtyTank
+# GasTank.Temp < MaxTempInGasTank
 l r1 GasTank Temperature
 slt r1 r1 MaxTempInGasTank
 add r0 r0 r1
