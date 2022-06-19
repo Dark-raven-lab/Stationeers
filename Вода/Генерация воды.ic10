@@ -1,0 +1,49 @@
+define maxTemperature 30 #C temp water for COOLPUMP
+define maxPressure 1000 #
+define pressureHotWater 100
+
+alias WaterSensor d0
+alias GenH2O d1
+alias WaterTank d2
+alias PumpDump d3
+alias Switch d4
+
+alias tempHotWater r15
+alias waterPressureLow r14
+alias waterTempMorm r13
+alias dropEnable r12
+alias enabled r11
+
+Start:
+s GenH2O On 0
+s PumpDump On 0
+Main:
+yield # sleep 1 tick
+l enabled Switch Setting
+
+s WaterSensor Lock enabled
+s PumpDump Lock enabled
+s PumpDump Setting 0
+
+beqz enabled Main
+
+l r0 WaterTank Pressure
+slt waterPressureLow r0 maxPressure
+s WaterSensor On waterPressureLow
+beqz waterPressureLow Start
+
+l tempHotWater WaterSensor Temperature
+sub tempHotWater tempHotWater 273.15
+slt waterTempMorm tempHotWater maxTemperature
+
+and dropEnable waterTempMorm waterPressureLow
+l r0 WaterSensor Pressure
+sgtz r0 r0 # > 0
+and dropEnable dropEnable r0
+s PumpDump On dropEnable
+
+l r0 WaterSensor TotalMoles
+slt r0 r0 pressureHotWater
+select r0 dropEnable 0 r0
+s GenH2O On r0
+j Main
