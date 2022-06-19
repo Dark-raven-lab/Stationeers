@@ -1,3 +1,5 @@
+define AccuracyPressure 10
+
 alias DoorInt d0
 alias VentInt d1
 alias Gas d2
@@ -66,12 +68,13 @@ s VentIn On 1 # START DEPRESSURE
 s VentOut Lock 1
 s VentOut On 0
 l r1 Gas Pressure # check pressure
+yield
 l r0 DoorOut Setting # check status door
 beq r0 1 StartPressure # If out want open-go next
 l CurPress Gas Pressure
 div r0 CurPress r1
 jal WriteLcd
-brnez CurPress -5 # if press != 0 retern
+brnez CurPress -6 # if press != 0 retern
 StartPressure:
 s VentIn On 0 # STOP DEPRESSURE
 s VentOut Mode 0 # First!
@@ -79,19 +82,22 @@ s VentOut PressureExternal PressOut
 s VentOut On 1
 s DoorOut On 1
 s DoorOut Setting 0
+yield
 l r0 DoorOut Setting # check status door
 beq r0 1 End # If door out was open - exit
 l CurPress Gas Pressure
 div r0 CurPress PressOut
 jal WriteLcd
-brna CurPress PressOut 0.1 -5 # If != set retern
+sub r0 PressOut CurPress
+brgt r0 AccuracyPressure -7
 End:
 s VentOut On 0
 s VentOut Lock 0
 s VentIn Lock 0
 s DoorOut Open 1
+yield
 sb 576516101 On 0
-sleep 5
+sb 576516101 Lock 0
 s DoorOut Setting 0
 s DoorOut On 0
 s DoorIn On 1
@@ -100,5 +106,6 @@ s Lamp On 0
 j Main
 WriteLcd:
 sb 576516101 On 1
+sb 576516101 Lock 1
 sb 576516101 Setting r0
 j ra
