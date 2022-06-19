@@ -1,0 +1,30 @@
+alias Door1 d0
+alias Door2 d1
+start:
+s Door1 Mode 1
+s Door2 Mode 1
+s Door1 Open 1
+s Door1 On 0
+s Door2 Open 0
+s Door2 On 1
+main:
+yield
+alias DoorIn r0
+alias DoorOut r1
+jal logic
+alias DoorIn r1
+alias DoorOut r0
+jal logic
+j main
+
+logic:
+l r0 DoorIn Open
+bltz r0 ra
+l r0 DoorIn Setting
+bne r0 1 ra
+s DoorOut Open 0
+s DoorOut Setting 0
+sleep 1
+s DoorIn Open 1
+s DoorIn Setting 0
+j ra
