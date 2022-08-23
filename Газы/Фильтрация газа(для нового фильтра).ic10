@@ -1,0 +1,114 @@
+define MaxPresInGasTank 25000 # pA
+define MinTempForFiltration 25 # C
+#define MaxTempInGasTank 318 # 45 C
+
+alias Slider d0 # optional
+alias FlickerLamp d1 # optional
+# Setting devices
+brdns Slider 2
+s Slider Lock 1
+s db Open 0
+
+# registers
+alias warningOn r15
+alias oldState r14
+alias filterEnable r13
+alias gasTemp r12
+
+# Once
+add gasTemp MinTempForFiltration 273.15
+
+Main:
+yield
+# check filters
+ls r0 db 0 Quantity
+ls r1 db 1 Quantity
+add r0 r0 r1 # summ, 0-200
+div r0 r0 2 # x / 2
+mul r0 r0 0.01 # x * 0.01
+slt r1 r0 0.5 # 1 if x < 0.5
+brdns Slider 3 # skip if not connected
+s Slider Setting r0 # precent
+s Slider On r1 # enable/disable
+seqz warningOn r0 # 1 if x == 0
+
+# tank control
+# GasTank.Pressure < MaxPresInGasTank
+l r0 db PressureOutput
+slt r0 r0 MaxPresInGasTank # <
+
+# DirtyTank.Temp < gasTemp
+l r1 db TemperatureInput
+slt r1 r1 gasTemp # <
+add r0 r0 r1
+
+# GasTank.Temp < MaxTempInGasTank
+#l r1 db TemperatureOutput
+#slt r1 r1 MaxTempInGasTank
+#add r0 r0 r1
+
+# 1 if warningOn == false
+select r1 warningOn 0 1
+add r0 r0 r1
+
+# if pressNotZero
+jal CheckGas
+snez r1 r1 # 1 if r1 != 0
+add r0 r0 r1
+# checking
+seq filterEnable r0 4
+s db Mode filterEnable
+
+bdseal FlickerLamp Warning
+j Main
+
+CheckGas:
+# NOT USE REGISTER r0
+l r1 db RatioPollutantOutput
+breqz r1 3 # if r1 == 0 then +3 line
+l r1 db RatioPollutantInput
+j ra
+
+l r1 db RatioCarbonDioxideOutput
+breqz r1 3 # if r1 == 0 then +3 line
+l r1 db RatioCarbonDioxideInput
+j ra
+
+l r1 db RatioNitrogenOutput
+breqz r1 3 # if r1 == 0 then +3 line
+l r1 db RatioNitrogenInput
+j ra
+
+l r1 db RatioNitrousOxideOutput
+breqz r1 3 # if r1 == 0 then +3 line
+l r1 db RatioNitrousOxideInput
+j ra
+
+l r1 db RatioOxygenOutput
+breqz r1 3 # if r1 == 0 then +3 line
+l r1 db RatioOxygenInput
+j ra
+
+l r1 db RatioVolatilesOutput
+breqz r1 3 # if r1 == 0 then +3 line
+l r1 db RatioVolatilesInput
+j ra
+# if tank empty
+move r1 0
+j ra
+
+Warning:
+# if (warningOn == 1) { Flicker On }
+breqz warningOn 4 # exit if warningOn == 0
+move oldState 1
+s FlickerLamp On 1
+j ra
+# else if (warningOn == 0 && oldState == 1)
+# { Flicker Off; oldState = warningOn }
+seqz r0 warningOn # warningOn == 0
+seq r1 oldState 1 # oldState == 1
+and r0 r0 r1 # r0 = 1 && r1 == 1
+beqz r0 ra # exit if r0 == 0
+move oldState 0
+s FlickerLamp On 0
+j ra
