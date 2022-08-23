@@ -8,10 +8,11 @@ define KpTemp 1.5 #Proportional gain
 define KdTemp 0.2 #TDerivative gain
 
 #Devices
-alias DeviceIn d0
+alias CoolingPump d0
 alias DeviceOut d1
 alias Generator d2
 alias GasSensor d3
+alias FuelSensor d4
 
 #Registers
 alias errorP r6 #Error current
@@ -31,12 +32,20 @@ define dT 0.5 # time one tick
 
 Start:
 yield
-# read enable
-l r0 Generator On
+# control fuel level
+l r0 FuelSensor Pressure
+seqz r0 r0 
+sb -1535893860 On r0
+select r0 r0 0 1
+
+breqz r0 2 # skip if fuel empty
+l r0 Generator On # read enabled
 
 # enabled devices
-s DeviceIn On r0
+s CoolingPump On r0
 s DeviceOut On r0
+
+beqz r0 Start
 
 # exit if generator disable
 beqz r0 Start
@@ -45,7 +54,7 @@ beqz r0 Start
 l r0 GasSensor Pressure
 #Save prev errorT, new errorT
 move prevSignalP errorP
-sub errorP r0 setPess
+sub errorP r0 setPess # error - need value
 #Change in errorT, Tderivative
 sub r0 prevSignalP errorP
 div DerivP r0 dT
@@ -67,6 +76,6 @@ div DerivT r0 dT
 mul KpE0T KpTemp errorT
 mul KdTDerivT KdTemp DerivT
 add r0 KpE0T KdTDerivT
-s DeviceIn Setting r0
+s CoolingPump Setting r0
 
 j Start
