@@ -1,30 +1,40 @@
 alias Door1 d0
 alias Door2 d1
 start:
+s Door1 Setting 0
 s Door1 Mode 1
-s Door2 Mode 1
 s Door1 Open 1
 s Door1 On 0
+
+s Door2 Setting 0
+s Door2 Mode 1
 s Door2 Open 0
 s Door2 On 1
 main:
 yield
-alias DoorIn r0
-alias DoorOut r1
+alias DoorIn d0
+alias DoorOut d1
 jal logic
-alias DoorIn r1
-alias DoorOut r0
+alias DoorIn d1
+alias DoorOut d0
 jal logic
 j main
 
 logic:
-l r0 DoorIn Open
-bltz r0 ra
-l r0 DoorIn Setting
-bne r0 1 ra
-s DoorOut Open 0
-s DoorOut Setting 0
+l r0 DoorOut Open
+bltz r0 ra # if == 0 exit
+l r0 DoorOut Setting
+bne r0 1 ra # exit if != 1
+s DoorIn On 1
+s DoorIn Open 0
+s DoorOut Lock 1
+s DoorIn Lock 1
 sleep 1
-s DoorIn Open 1
+s DoorOut Open 1
+sleep 0.5
+s DoorOut On 0
+s DoorOut Setting 0
 s DoorIn Setting 0
+s DoorOut Lock 0
+s DoorIn Lock 0
 j ra
