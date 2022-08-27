@@ -1,0 +1,81 @@
+# Settings
+# Need precent in input 1 in Mixer
+define kMaxPressure 10000
+define kMaxMoles 100
+define kPrecentO2 0.3
+define kPrecentCO2 0.2
+
+alias MixerCo2N2 d0
+alias PumpO2 d1
+alias MixAnalyzer d2
+alias TankCo2 d3
+alias TantN2 d4
+alias TankO2 d5
+
+# REGISTERS
+alias DesiredN2 r15
+alias mixerOn r14
+alias pumpO2On r13
+
+# FIRST RUN
+add r0 kPrecentO2 kPrecentCO2 # +
+sub DesiredN2 1 r0 # -
+mul DesiredN2 DesiredN2 100
+
+Main:
+yield # once tick
+
+jal MixCo2N2
+
+jal MixO2
+
+j Main
+
+MixCo2N2:
+l r0 TankCo2 Pressure
+l r1 TantN2 Pressure
+slt r0 r0 100 # 1 if <
+slt r1 r1 100 # 1 if <
+add r2 r0 r1
+seqz mixerOn r2 # 1 if == 0
+beqz mixerOn MexerPower # disable mixer if low gas pressure
+
+# Control max moles
+sub r0 1 kPrecentO2 # Max Co2N2 %
+mul r1 kMaxMoles r0 # Max Moles Co2N2
+l r2 MixAnalyzer TotalMoles 
+slt mixerOn r2 r1 # <
+beqz mixerOn MexerPower # disable if >
+
+# CALCULATE
+l r0 TankCo2 Temperature
+l r1 TantN2 Temperature
+mul r3 DesiredN2 r0 # 66 * t1
+sub r4 100 DesiredN2 # 100-66
+mul r4 r4 r1 # 34 * t2
+add r4 r3 r4
+div r3 r3 r4 # 66*t1/^
+mul r3 r3 100 # * 100
+s MixerCo2N2 Setting r3
+
+MexerPower:
+s MixerCo2N2 On mixerOn
+j ra
+
+MixO2:
+# Control pressure
+l r1 TankO2 Pressure
+slt pumpO2On r1 100
+beqz pumpO2On O2Power
+
+# Cotrol moles
+l r1 MixAnalyzer RatioOxygen
+mul r2 kMaxMoles kPrecentO2
+slt pumpO2On r1 r2
+beqz pumpO2On O2Power
+
+
+
+O2Power:
+s PumpO2 On pumpO2On
+j ra
