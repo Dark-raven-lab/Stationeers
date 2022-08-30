@@ -1,0 +1,66 @@
+define kPressSET 25000 # kPa
+define kHysteresis 5000 # kPa
+define kTempCoolGas -70 # C
+# Purge cool array
+define kTempStartPurge 30 # C
+define kLockDevices 1
+
+define VENTS -1129453144
+define RADIATORS -566775170
+# DEVICES
+alias CoolGasTank d0
+alias GasSensor d1
+alias PurgeDevice d3
+alias CoolWaterTank d4
+# REGISTERS
+alias minPressure r15
+alias maxPressure r14
+alias maximum r13
+alias minimum r12
+alias presHigh r11
+alias presLow r10
+alias externalTemp r9
+
+sb VENTS Lock kLockDevices
+sub minPressure kPressSET kHysteresis
+add maxPressure kPressSET kHysteresis
+
+Main:
+yield
+l externalTemp GasSensor Temperature
+sub externalTemp externalTemp 273
+# Control collecting cool air for atmoshere
+jal CollectingColdAir
+jal CoolArray
+j Main
+
+CollectingColdAir:
+l r1 CoolGasTank Pressure
+
+slt presLow r1 minimum # <
+sgt presHigh r1 maximum # >
+
+select minimum presLow kPressSET minPressure
+select maximum presHigh kPressSET maxPressure
+
+# Select vent mode
+select r0 presHigh 0 1
+sb VENTS Mode r0
+
+# check external temperature
+slt r0 externalTemp kTempCoolGas # 1 temp < min temp
+and r0 r0 presLow
+select r0 presHigh 1 r0
+sb VENTS On r0
+j ra 
+
+CoolArray:
+l r1 CoolWaterTank Temperature
+bdns PurgeDevice CoolRadiators
+sub r1 r1 273 # K in C
+sgt r0 r1 kTempStartPurge # >
+s PurgeDevice On r0
+CoolRadiators:
+slt r0 externalTemp r1 # ext T < water T
+sb RADIATORS Open r0
+j ra
