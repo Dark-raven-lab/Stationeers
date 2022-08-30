@@ -38,6 +38,7 @@ bgtz VisorIsOpen IsOpen # if Visor Open
 # else Visor Closed
 beqal WantOpeningVisor 1 AbilityOpenVisor
 jal PressureControl
+jal TemperatureControl
 jal OxygenControl
 j Main
 
@@ -52,6 +53,11 @@ l RPollutant Skaf RatioPollutant
 l RVolatiles Skaf RatioVolatiles
 j ra
 
+TemperatureControl:
+select r0 VisorIsOpen 0 1
+s Skaf On r0
+j ra
+
 IsOpen:
 blt PressExt kPressMin VisorClose # if Low
 bgt PressExt kPressMax VisorClose # if High
@@ -62,10 +68,8 @@ l r0 Visor Lock
 beq r0 1 VisorClose
 s Skaf Filtration 0
 s Skaf AirRelease 0
-s Skaf On 0
 j Main
 VisorClose:
-s Skaf On 1
 s Visor Open 0
 j Main
 
