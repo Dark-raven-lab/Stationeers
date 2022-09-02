@@ -1,0 +1,73 @@
+define kMaxMolesPressure 101
+define kPrecent 0.3
+#define kHisteresys 0.05
+define kK 0.5
+
+alias Pump d0
+
+alias filterEnable r15
+alias pumpEnable r14
+alias minMoles r13
+alias normMoles r12
+alias maxMoles r11
+alias currentMoles r10
+alias totalMoles r9
+alias currentRatio r8
+
+Main:
+yield
+l r0 db RatioOxygenOutput
+breqz r0 3 # skip if == 0
+l currentRatio db RatioOxygenInput
+j Logic
+
+l r0 db RatioCarbonDioxideOutput
+breqz r0 3 # skip if == 0
+l currentRatio db RatioCarbonDioxideInput
+j Logic
+
+l r0 db RatioNitrogenOutput
+breqz r0 3 # skip if == 0
+l currentRatio db RatioNitrogenInput
+j Logic
+
+#else
+move pumpEnable 0
+move filterEnable 0
+j SetPower
+
+Logic:
+# pressure
+l totalMoles db TotalMolesInput
+l r0 db PressureInput
+# find moles for pressure(kpa)
+mul normMoles totalMoles kMaxMolesPressure
+div normMoles normMoles r0
+mul normMoles normMoles kPrecent
+round normMoles normMoles
+# find need moles
+mul currentMoles currentRatio totalMoles
+round currentMoles currentMoles
+# find upper limit and lower limit
+mul r0 totalMoles 0.05
+#mul r0 r0 kPrecent
+sub minMoles normMoles r0 # upper limit
+floor minMoles minMoles
+add maxMoles normMoles r0 # lower limit
+floor maxMoles maxMoles
+
+# FILTER +
+select r0 filterEnable normMoles maxMoles
+sgt filterEnable currentMoles r0 # op2 > op3
+
+# PUMP -
+select r0 pumpEnable normMoles minMoles
+slt pumpEnable currentMoles r0 # op2 < op3
+
+sub r0 normMoles currentMoles
+mul r0 r0 kK
+SetPower:
+s Pump Setting r0
+s Pump On pumpEnable
+s db Mode filterEnable
+j Main
