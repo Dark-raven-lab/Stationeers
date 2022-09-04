@@ -1,0 +1,88 @@
+define timeLightAlarm 120 # 120 sec
+define timeVoiceAlarm 10
+define enableMusicAtDawn 1
+alias MeteoStation d0
+alias SunSensor d1
+
+alias mode r15
+alias time r14
+alias voiceAlarm r13
+alias doorCloused r12
+alias night r11
+alias isStorm r10
+
+s SunSensor Mode 0
+#sb -828056979 Volume 100
+#sb -828056979 On 0 # voice!
+
+main:
+yield
+# LIGHT ALARM
+l time MeteoStation NextWeatherEventTime
+sgtz r0 time # time > 0
+slt r1 time timeLightAlarm # <
+and r1 r0 r1
+sb -1535893860 On r1
+s db Setting time
+
+# VOICE ALARM
+slt r1 time timeVoiceAlarm # <
+and r0 r0 r1
+bnez r0 ToggleVoice
+
+# DOOR CONTROL
+l mode MeteoStation Mode
+sne isStorm mode 2 # is storm
+jal TogleDoor
+
+# LIGHT CONTROL
+l r0 SunSensor Vertical
+slt r1 r0 85 # <
+select r0 r1 0 1
+jal DayToggle
+j main
+
+ToggleVoice:
+sb -828056979 On 1
+sb -828056979 Mode 18 # ALARM
+sleep 1
+bgt time 5 ra # exit if > 5 sec
+sb -828056979 Mode 33 # FIVE
+sleep 1
+sb -828056979 Mode 32 # FOUR
+sleep 1
+sb -828056979 Mode 31 # THREE
+sleep 1
+sb -828056979 Mode 30 # TWO
+sleep 1
+sb -828056979 Mode 29 # ONE
+sleep 1
+sb -828056979 On 0
+j ra
+
+TogleDoor:
+beq isStorm doorCloused ra
+sb 1736080881 On 1
+sb 1736080881 Open isStorm
+sleep 1
+sb 1736080881 On 0
+move doorCloused isStorm
+j ra
+
+DayToggle:
+beq r0 night ra
+sb -1860064656 On r0
+sb 797794350 On r0
+sb 1847265835 On r0
+sb 555215790 On r0
+sb 1592905386 On r0
+sb 1436121888 On r0
+sb 1514476632 On r0
+sb 1514476632 On r0
+sb -828056979 On r0
+move night r0
+beqz enableMusicAtDawn ra # if not nable music
+select r0 r0 0 1
+sb -828056979 Mode 7 # voice!
+sb -828056979 On r0 # voice!
+j ra
