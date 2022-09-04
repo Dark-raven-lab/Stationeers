@@ -1,17 +1,13 @@
 define precentGeneratorsOn 0.1
-define precentGeneratorsOff 0.2
+define precentGeneratorsOff 0.5
 # 1 tick = 0.5 sec
 define timeUpdateDisplay 10 # tick
 define turningBeaconOnceIn 20 # tick
 define beaconDurationOfWork 6 # tick
 
-alias sensor d0 # required
+alias sensor d0 # optional
 alias display d1 # optional
 alias beacon d2 # optional
-# DEBUG
-alias vertical d3
-alias setVertical d4
-alias sethorison d5
 
 alias counter r15
 alias genEnable r14
@@ -21,10 +17,10 @@ alias maxCharge r11
 alias batteryPercent r10
 alias counterDisplay r9
 
+# CONSTATNS
 define GREEN 2
 define ORANGE 3
 define RED 4
-
 define BATTERYLARGE -1388288459
 define BATTERYSMALL -400115994
 define SOLARHEAVY -934345724
@@ -37,18 +33,7 @@ define GENERATORGAS 1165997963
 start:
 yield
 # Alig Panels
-l r1 sensor Vertical
-sub r0 75 r1
-div r0 r0 1.5
-sb SOLARHEAVYDUAL Vertical r0
-sb SOLARPANELDUAL Vertical r0
-sb SOLARHEAVY Vertical r0
-sb SOLARPANEL Vertical r0
-l r0 sensor Horizontal
-sb SOLARHEAVYDUAL Horizontal r0
-sb SOLARPANELDUAL Horizontal r0
-sb SOLARHEAVY Horizontal r0
-sb SOLARPANEL Horizontal r0
+bdseal sensor UpdateSolarPanel
 # Check Power:
 lb r0 BATTERYSMALL Charge Sum
 lb r1 BATTERYLARGE Charge Sum
@@ -66,6 +51,10 @@ sb GENERATORGAS On genEnable
 bdseal display SetDisplay # optional
 bdseal beacon BeaconPower # optional
 j start
+
+UpdateSolarPanel:
+
+j ra
 
 SetDisplay:
 sub r0 currentCharge oldCharge #
