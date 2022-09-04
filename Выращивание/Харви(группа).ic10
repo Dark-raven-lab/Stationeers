@@ -1,0 +1,44 @@
+alias HydDev d0
+alias Sorter d1
+alias HarviMain d2
+define Harvi 958056199
+define Count 5         #Harvi
+define Seed 1005571172 #PotatoSeed
+sb Harvi On 1
+s Sorter On 1
+s Sorter Mode 2
+s Sorter ClearMemory 1
+s Sorter Output 1
+Start:
+yield
+mul r0 Count 2
+seq r0 r10 r0
+s Sorter ClearMemory r0
+
+Sort:
+ls r15 Sorter 0 OccupantHash
+ls r14 Sorter 0 Occupied
+l r10 Sorter ImportCount
+yield
+beq r14 0 Harv
+brne r15 Seed 5
+brgt r10 Count 2
+s Sorter Output 0
+brle r10 Count 2
+s Sorter Output 1
+breq r15 Seed 2
+s Sorter Output 1
+
+Harv:
+ls r14 HarviMain 0 Occupied
+ls r13 HydDev 0 Seeding
+ls r12 HydDev 0 Mature
+ls r11 HydDev 0 Growth
+breq r14 0 3
+seq r0 r11 -1
+sb Harvi Plant r0
+sb Harvi Harvest r13
+sb Harvi Harvest r12
+ls r5 HydDev 0 Efficiency
+s db Setting r10
+j Start

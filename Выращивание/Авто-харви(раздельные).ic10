@@ -1,0 +1,70 @@
+alias Harvi1 d0
+alias Harvi2 d1
+alias Harvi3 d2
+alias Ferm1 d3
+alias Ferm2 d4
+alias Ferm3 d5
+
+alias count r15
+
+Main:
+yield
+move count 0
+
+One:
+bdns Harvi1 Two
+bdns Ferm1 Two
+alias Harvi d0
+alias Ferm d3
+jal ChechFerm
+
+Two:
+bdns Harvi2 Three
+bdns Ferm2 Three
+alias Harvi d1
+alias Ferm d4
+jal ChechFerm
+
+Three:
+bdns Harvi3 LightControl
+bdns Ferm3 LightControl
+alias Harvi d2
+alias Ferm d5
+jal ChechFerm
+
+LightControl:
+s db Setting count
+lb r0 1076425094 PrefabHash Minimum
+beqz r0 Main # not found solar sensor
+
+lb r1 1076425094 Activate Minimum # 0 = night
+seqz r1 r1 # 1 if night
+sgtz r2 count # 1 if growth
+and r0 r1 r2
+sb -1758710260 On r0
+
+j Main
+
+ChechFerm:
+ls r0 Ferm 0 Occupied
+beqz r0 CheckPlant
+s Harvi On 1
+add count count 1
+ls r0 Ferm 0 Seeding
+ls r1 Ferm 0 Mature
+#or r0 r0 r1
+s Harvi Harvest r0
+s Harvi Harvest r1
+yield
+j ra
+
+CheckPlant:
+ls r0 Harvi 0 Occupied
+ls r1 Ferm 0 Growth
+s db Setting r1
+seq r1 r1 -1
+and r0 r0 r1
+s Harvi On r0
+s Harvi Plant r0
+yield
+j ra
