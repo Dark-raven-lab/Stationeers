@@ -25,7 +25,6 @@ alias PressExt r12
 alias PressInt r11
 alias VisorIsOpen r10
 alias TempExt r9
-alias TempInt r8
 
 s Skaf PressureSetting kPressNorm
 add r0 TempNorm 273
@@ -45,7 +44,6 @@ j Main
 ReadSystem:
 l VisorIsOpen Visor Open
 l TempExt Skaf TemperatureExternal
-l TempInt Skaf Temperature
 l PressInt Skaf Pressure
 l PressExt Skaf PressureExternal
 l ROxygen Skaf RatioOxygen

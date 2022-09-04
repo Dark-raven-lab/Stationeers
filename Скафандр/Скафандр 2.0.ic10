@@ -1,0 +1,117 @@
+define kPressIntMax 130
+define kPressIntNorm 101
+define kPressIntMin 50
+define TempNorm 22 # Internal temp
+# EXTERNAL
+define kPressExtMax 130 # max pressure
+define kPressExtMin 60 # min pressure
+define kTempExtMax 45 # max temp
+define kTempExtMin 5 # min temp
+define kRationExtOxygen 0.25 # 25%
+# Settings filters on/off
+define kRatioIntOxygen 0.45 # 45%
+# Settings for open/close visor
+define kAutoVisor 1 # 1=true, 0=false
+
+define MaxPollutantExt 0.05
+define MaxVolatilesExt 0.05
+
+# Don't touch
+alias Skaf db
+alias Visor d0
+# REGISTERS
+alias visorIsOpen r15
+alias visorWasOpen r14
+alias PressInt r13
+alias counter r12
+alias needLock r11
+
+s Skaf PressureSetting kPressIntNorm
+add r0 TempNorm 273.15
+s Skaf TemperatureSetting r0
+
+Main:
+yield
+l visorIsOpen Visor Open
+beqz needLock TemperatureControl
+s Visor Lock needLock
+move needLock 0
+move counter 0
+TemperatureControl:
+seqz r0 visorIsOpen # 1 if close
+beqz r0 SetTemperature # if == 0
+l r0 Skaf TemperatureExternal
+sub r0 r0 273.15
+slt r1 r0 kTempExtMin
+sgt r2 r0 kTempExtMax
+or r0 r1 r2
+SetTemperature:
+s Skaf On r0
+
+PressureControl:
+seqz r0 visorIsOpen # 1 if close
+beqz r0 SetAirRelease # if == 0
+l PressInt Skaf Pressure
+l r0 Skaf AirRelease # Get status Air
+beqz r0 CkeckPressure
+sna r0 PressInt kPressIntNorm 5 # ~ 5%
+j SetAirRelease
+CkeckPressure:
+slt r1 PressInt kPressIntMin # <
+sgt r2 PressInt kPressIntMax # >
+or r0 r1 r2
+SetAirRelease:
+s Skaf AirRelease r0
+
+FiltrationControl:
+seqz r0 visorIsOpen # 1 if close
+beqz r0 SetFiltration  # if == 0
+l r0 Skaf RatioOxygen
+slt r0 r0 kRatioIntOxygen # if Oxygen.Low
+SetFiltration:
+s Skaf Filtration r0
+
+AutoVisor:
+beqz kAutoVisor Main # exit if disable logic
+l r0 Visor Lock # read lock
+bgtz r0 Main # exit if locked
+VisorCheckExternal:
+l r0 Skaf PressureExternal
+slt r1 r0 kPressExtMax
+sgt r2 r0 kPressExtMin
+and r0 r1 r2 # 1 if good pressure
+
+l r1 Skaf TemperatureExternal
+sub r1 r1 273.15
+slt r2 r1 kTempExtMax
+sgt r3 r1 kTempExtMin
+and r1 r2 r3 # 1 if good temperature
+
+and r0 r0 r1 # 1 if (Press & Temp)
+
+beqz visorWasOpen SetVisorOpen # first open
+beqz r0 SetVisorOpen # bad pressure or temp
+VisorWasOpen:
+# was open
+l r1 Skaf RatioOxygen
+sgt r1 r1 kRationExtOxygen
+and r0 r0 r1 # 1 if (Oxygen & Press & Temp)
+
+l r1 Skaf RatioPollutant
+slt r1 r1 MaxPollutantExt
+and r0 r0 r1 # 1 if (!Pollutant & Oxygen & Press & Temp)
+
+l r1 Skaf RatioVolatiles
+slt r1 r1 MaxVolatilesExt
+and r0 r0 r1 # 1 if (!Volatiles & !Pollutant & Oxygen & Press & Temp)
+
+#bge counter 30 SetVisorOpen # >=
+#add counter counter 1
+bgtz r0 SetVisorOpen # if open
+move needLock 1 # 1 if need closed
+SetVisorOpen:
+s Visor Open r0
+move visorWasOpen r0
+bgtz r0 Main # exit if visor open
+move counter 0
+j Main
