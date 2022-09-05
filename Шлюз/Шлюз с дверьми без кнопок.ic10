@@ -1,0 +1,106 @@
+define AccuracyPressure 10
+define GASSENSOR -1252983604
+define BUTTON 491845673
+define SLIDER 576516101
+define ALARMLAMP -1535893860
+
+alias DoorInt d0
+alias VentInt d1
+alias MainButton d2
+alias DoorExt d3
+alias VentExt d4
+alias Lamp d5
+alias PressInt r15
+alias PressExt r14
+alias CurPress r13
+alias PressOut r12
+alias airlookState r11
+Start:
+l r0 DoorInt Open
+select airlookState r0 1 0
+s DoorExt Open airlookState
+Main:
+yield
+lb r0 BUTTON Activate Maximum
+beqz r0 Main
+select airlookState airlookState 0 1
+s db Setting airlookState
+sb ALARMLAMP On 1
+brdns Lamp 2 # enable lamp if connected
+s Lamp On 1
+beq airlookState 0 GoExt
+
+GoInt:
+lb PressInt GASSENSOR Pressure Maximum # Save cur pressure
+move PressOut PressExt
+alias DoorBack d3
+alias DoorFront d0
+alias VentBack d4
+alias VentFront d1
+j CloseDoor
+
+GoExt:
+lb PressExt GASSENSOR Pressure Maximum # Save cur pressure
+move PressOut PressInt
+alias DoorBack d0
+alias DoorFront d3
+alias VentBack d1
+alias VentFront d4
+
+CloseDoor:
+yield
+sb SLIDER On 1
+sb SLIDER Lock 1
+s DoorBack On 1 # enable door in
+s DoorBack Open 0 # closed door in
+l r0 DoorBack Open # check status door in
+bnez r0 CloseDoor # if != closed retern
+s DoorBack On 0 # disable door in
+
+StartDepressure:
+s VentBack Lock 1
+s VentBack Mode 1 # set mode depressure
+s VentBack On 1 # START DEPRESSURE
+s VentFront Lock 1
+s VentFront On 0
+
+WaitDepressure:
+yield
+lb r1 GASSENSOR Pressure Maximum # check pressure
+l r0 MainButton Activate # check skip stage
+bgtz r0 Pressurization # If out want open-go next
+lb CurPress GASSENSOR Pressure Maximum
+div r0 CurPress r1
+sb SLIDER Setting r0
+bgtz CurPress WaitDepressure # if press != 0 retern
+
+Pressurization:
+yield
+s VentBack On 0 # STOP DEPRESSURE
+s VentFront Mode 0 # First!
+s VentFront PressureExternal PressOut
+s VentFront On 1
+s DoorFront On 1
+
+WaitPressurization:
+yield
+l r0 MainButton Activate # check skip stage
+bgtz r0 OpenDoor # If door out was open - exit
+lb CurPress GASSENSOR Pressure Maximum
+sub r1 PressOut AccuracyPressure # Need pressure
+div r0 CurPress r1
+sb SLIDER Setting r0
+blt CurPress r1 WaitPressurization
+
+OpenDoor:
+s VentFront On 0
+s VentFront Lock 0
+s VentBack Lock 0
+s DoorFront Open 1
+yield
+sb SLIDER On 0
+sb SLIDER Lock 0
+sb ALARMLAMP On 0
+bdns Lamp Main # disable lamp if connected
+s Lamp On 0
+j Main
