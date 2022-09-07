@@ -1,0 +1,38 @@
+define kCOUNT 50
+define kLOCKDEVICE 1
+
+alias ButtonOpen d0
+
+define STACKERS -2020231820
+define SORTER -1009150565
+
+sb STACKERS Lock kLOCKDEVICE
+sb SORTER Lock kLOCKDEVICE
+
+alias oldCount r15
+
+Start:
+move oldCount 0
+sb SORTER ClearMemory 1
+
+Main:
+yield
+sb STACKERS Setting kCOUNT
+
+brdns ButtonOpen 5
+l r0 ButtonOpen Activate
+sb STACKERS Activate r0
+sb STACKERS On r0
+bgtz r0 Main
+
+lb r0 SORTER ImportCount Sum
+sgt r1 r0 oldCount
+move oldCount r0
+
+sb SORTER On r1
+sb STACKERS On r1
+s db Setting r1
+
+beqz r1 Main
+sleep 5
+j Main
