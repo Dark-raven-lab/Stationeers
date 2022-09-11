@@ -1,5 +1,4 @@
 define kAccuracyPressure 10
-
 # CONSTANTS ALL DEVICES
 define kGASSENSOR -1252983604
 define kBUTTON 491845673
@@ -24,8 +23,10 @@ alias sensorWorked r9
 
 Init: # ONCE
 l r0 DoorInt Open
-select airlookState r0 0 1
-s DoorExt Open airlookState
+select airlookState r0 1 0
+select r1 r0 0 1
+s DoorExt Open r1
+move sensorWorked 1
 
 Main: # CYRCLE
 yield
