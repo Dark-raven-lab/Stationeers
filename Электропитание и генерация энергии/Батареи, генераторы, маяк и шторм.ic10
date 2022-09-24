@@ -1,0 +1,119 @@
+define kGeneratorsControl 1
+# COAL GENERATORS
+define kEnableGenerators 0.15 # 15%
+define kDisableGenerators 0.3 # 30%
+# GAS GENERATORS
+define kEnableGasGenerators 0.05 # 5%
+define kDisableGasGenerators 0.5 # 50%
+# WARNING
+define kIsLowCharge 0.1 # 10%
+define lightStormWarning 60
+# 1 tick = 0.5 sec
+define timeUpdateDisplay 10 # ticks
+# BECON
+define kAutoEnabled 1
+define turnBeaconIn 20 # ticks
+define beaconPowerDuration 4 # ticks
+
+alias display1 d1 # optional
+alias display2 d2 # optional
+
+alias counter r15
+alias oldCharge r14
+alias diffCharge r13
+alias powerPercent r12
+alias isLowCharge r11
+alias energyDecreases r10
+alias counterDisplay r9
+alias displaySwitch r8
+alias counterVoice r7
+alias stormIncoming r6
+
+# CONSTATNS
+define GREEN 2
+define ORANGE 3
+define RED 4
+define BATTERYLARGE -1388288459
+define BATTERYSMALL -400115994
+define GENERATORCOAL 813146305
+define GENERATORGAS 1165997963
+define METEOSTATION 1997212478
+
+Main:
+yield
+BatteryCheck: # Check Power:
+lb r0 BATTERYSMALL Charge Sum
+lb r1 BATTERYLARGE Charge Sum
+add r2 r0 r1 # current charge!
+lb r0 BATTERYSMALL Maximum Sum
+lb r1 BATTERYLARGE Maximum Sum
+add r3 r0 r1 # max charge!
+div powerPercent r2 r3 # calculate precent
+s db Setting powerPercent
+slt energyDecreases r2 oldCharge # new charge < old charge
+slt isLowCharge powerPercent kIsLowCharge # < 10%
+sub diffCharge r2 oldCharge
+move oldCharge r2 # for next tick
+BeaconPower:
+beqz kAutoEnabled StormControl # DISABLED
+add counter counter 1 # counter + 1
+blt counter turnBeaconIn StormControl # exit
+add r0 turnBeaconIn beaconPowerDuration
+sle r1 counter r0 # if <= max
+sb -188177083 On r1
+bnez r1 StormControl # wating
+move counter 0
+StormControl:
+lb r2 METEOSTATION NextWeatherEventTime Maximum
+sgtz r0 r2 # time > 0
+slt r1 r2 lightStormWarning # <
+and r1 r0 r1
+select r1 isLowCharge 0 r1
+sb -1535893860 On r1 # LIGHT WARNING
+slt r1 r2 10 # # VOICE ALARM
+and stormIncoming r0 r1
+beqz stormIncoming GeneratorsControl
+add counterVoice counterVoice 1
+sgt r0 counterVoice 20
+select counterVoice r0 0 counterVoice
+slt r0 counterVoice 16
+select r0 r0 10 18
+sb -828056979 Mode r0 # ALARM
+GeneratorsControl:
+beqz kGeneratorsControl UpdateDisplay # DISABLED
+lb r0 GENERATORCOAL On Maximum
+lb r1 GENERATORGAS On Maximum
+select r0 r0 kDisableGenerators kEnableGenerators
+select r1 r1 kDisableGasGenerators kEnableGasGenerators
+slt r0 powerPercent r0 # x < y
+slt r1 powerPercent r1 # x < y
+sb GENERATORCOAL On r0
+sb GENERATORGAS On r1
+UpdateDisplay:
+select r1 energyDecreases ORANGE GREEN
+select r1 isLowCharge RED r1
+add counterDisplay counterDisplay 1
+brlt counterDisplay timeUpdateDisplay 3 # jump if <
+move counterDisplay 0
+select displaySwitch displaySwitch 0 1
+select r2 displaySwitch 1 2
+select r3 displaySwitch powerPercent diffCharge
+brdns display1 4
+s display1 Color r1
+s display1 Mode r2
+s display1 Setting r3
+brdns display2 4
+s display2 Color r1
+s display2 Mode r2
+s display2 Setting r3
+beqz isLowCharge VoicePower
+add counterVoice counterVoice 1
+sgt r0 counterVoice 20
+select counterVoice r0 0 counterVoice
+slt r0 counterVoice 17
+select r0 r0 11 23
+sb -828056979 Mode r0 # ALARM
+VoicePower:
+or r0 isLowCharge stormIncoming
+sb -828056979 On r0
+j Main

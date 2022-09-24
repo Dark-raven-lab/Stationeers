@@ -1,73 +1,53 @@
-define kMaxMolesPressure 101
-define kPrecent 0.3
-#define kHisteresys 0.05
-define kK 0.5
+define kMaxPressure 101
+define kPrecent 0.7
 
-alias Pump d0
+alias RegPress d0
+alias display d1
 
-alias filterEnable r15
-alias pumpEnable r14
-alias minMoles r13
-alias normMoles r12
-alias maxMoles r11
-alias currentMoles r10
-alias totalMoles r9
-alias currentRatio r8
+alias currentRatio r15
+alias currentPressure r14
+alias regPressEnable r13
+alias filterEnable r12
+
+s RegPress Setting kMaxPressure
+s RegPress Lock 0
 
 Main:
 yield
 l r0 db RatioOxygenOutput
 breqz r0 3 # skip if == 0
-l currentRatio db RatioOxygenInput
+l currentRatio db RatioOxygenOutput2
 j Logic
 
 l r0 db RatioCarbonDioxideOutput
 breqz r0 3 # skip if == 0
-l currentRatio db RatioCarbonDioxideInput
+l currentRatio db RatioCarbonDioxideOutput2
 j Logic
 
 l r0 db RatioNitrogenOutput
 breqz r0 3 # skip if == 0
-l currentRatio db RatioNitrogenInput
+l currentRatio db RatioNitrogenOutput2
 j Logic
 
 #else
-move pumpEnable 0
+move regPressEnable 0
 move filterEnable 0
 j SetPower
 
 Logic:
+s display Setting currentRatio
 # pressure
-l totalMoles db TotalMolesInput
-l r0 db PressureInput
-# find moles for pressure(kpa)
-mul normMoles totalMoles kMaxMolesPressure
-div normMoles normMoles r0
-mul normMoles normMoles kPrecent
-round normMoles normMoles
-# find need moles
-mul currentMoles currentRatio totalMoles
-round currentMoles currentMoles
-# find upper limit and lower limit
-mul r0 totalMoles 0.05
-#mul r0 r0 kPrecent
-sub minMoles normMoles r0 # upper limit
-floor minMoles minMoles
-add maxMoles normMoles r0 # lower limit
-floor maxMoles maxMoles
+l currentPressure db PressureInput
+slt r1 currentPressure kMaxPressure
+# gas precent
+sle r0 currentRatio kPrecent # <=
+# enable state
+and regPressEnable r1 r0
 
-# FILTER +
-select r0 filterEnable normMoles maxMoles
-sgt filterEnable currentMoles r0 # op2 > op3
+add r1 kPrecent 0.01
+sgt filterEnable currentRatio r1
 
-# PUMP -
-select r0 pumpEnable normMoles minMoles
-slt pumpEnable currentMoles r0 # op2 < op3
-
-sub r0 normMoles currentMoles
-mul r0 r0 kK
 SetPower:
-s Pump Setting r0
-s Pump On pumpEnable
+s RegPress On regPressEnable
 s db Mode filterEnable
 j Main

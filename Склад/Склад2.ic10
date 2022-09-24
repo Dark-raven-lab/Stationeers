@@ -1,0 +1,42 @@
+define kCount 50 # Stack in sklad
+define kOREID1 1758427767
+define kOREID2 -190236170
+define kOREID3 1830218956
+define kOREID4 1103972403
+
+alias Iron d0
+alias Lead d1
+alias Nikel d2
+alias Silicon d3
+alias LCD d4
+alias Socket d5
+
+Main:
+yield
+l r0 db Setting
+
+brdns Socket 2
+s Socket Setting r0
+
+brne r0 kOREID1 3
+l r1 Iron Quantity
+j WriteLCD
+
+brne r0 kOREID2 3
+l r1 Lead Quantity
+j WriteLCD
+
+brne r0 kOREID3 3
+l r1 Nikel Quantity
+j WriteLCD
+
+brne r0 kOREID4 3
+l r1 Silicon Quantity
+j WriteLCD
+
+j Main
+
+WriteLCD:
+mul r1 r1 kCount
+s LCD Setting r1
+j Main
