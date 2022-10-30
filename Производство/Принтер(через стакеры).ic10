@@ -47,27 +47,20 @@ j Print
 
 Print:
 l r0 Print On # Read printer OnOff
-#s Stacker On r0 # Set OnOff stacker
 beqz r0 Clear # if printer off - exit
-#l r0 Print Open # Read open toggle
-#l r1 Print Activate # Read working status
-#add r0 r0 r1
-#s Stacker On ExportPieces # Set OnOff stacker
-#beqz r0 Clear # if not working - exit
 l ExportPieces Print ExportCount # Read current count
-s Stacker On ExportPieces # Set OnOff stacker
-s Print Lock ExportPieces # block
+sgtz r0 ExportPieces # 1 if > 0
+s Stacker On r0 # Set OnOff stacker
+s Print Lock r0 # block
 l NeedPieces Stacker Setting # Read expected
 blt ExportPieces NeedPieces ra # exit if cur < exp
 s Print Activate 0 # Disable working
 s Stacker Lock 1 # block
-#sleep 1 # wating...
 l r0 Stacker ImportCount
 blt r0 NeedPieces ra # wating do curent < NeedPieces
 yield
 s Stacker Activate 1 # Give
 yield
-#sleep 0.5 # wating...
 s Print On 0
 s Stacker On 0
 Clear:
