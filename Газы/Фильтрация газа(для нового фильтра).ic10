@@ -1,6 +1,5 @@
-define MaxPresInGasTank 25000 # pA
-define MinTempForFiltration 25 # C
-#define MaxTempInGasTank 318 # 45 C
+define MaxPresInGasTank 15000 # pA
+define MinTempForFiltration 130 # C
 
 alias Slider d0 # optional
 alias FlickerLamp d1 # optional
@@ -41,11 +40,6 @@ slt r0 r0 MaxPresInGasTank # <
 l r1 db TemperatureInput
 slt r1 r1 gasTemp # <
 add r0 r0 r1
-
-# GasTank.Temp < MaxTempInGasTank
-#l r1 db TemperatureOutput
-#slt r1 r1 MaxTempInGasTank
-#add r0 r0 r1
 
 # 1 if warningOn == false
 select r1 warningOn 0 1
