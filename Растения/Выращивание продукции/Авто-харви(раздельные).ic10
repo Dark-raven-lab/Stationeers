@@ -1,3 +1,5 @@
+define kEnableLampControl 1
+
 alias Harvi1 d0
 alias Harvi2 d1
 alias Harvi3 d2
@@ -32,8 +34,10 @@ alias Harvi d2
 alias Ferm d5
 jal ChechFerm
 
-LightControl:
 s db Setting count
+
+LightControl:
+beqz kEnableLampControl Main # disabled
 lb r0 1076425094 PrefabHash Minimum
 beqz r0 Main # not found solar sensor
 

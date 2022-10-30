@@ -1,0 +1,66 @@
+define kMiPressFiltrationO2 30  # kPa
+define kMaxTemp 30              # C
+define kMaxPressure 101         # kPa
+define kRatioCo2 0.1            # 0-1
+define kRatioO2 0.5             # 0-1
+# Devices
+alias Filter db
+alias PumpCo2 d0
+alias Slider d1
+# Registers
+alias press r15
+alias temp r14
+alias lightState r13
+
+Start:
+s PumpCo2 Lock 1
+s Filter Lock 1
+brdns Slider 2
+s Slider Lock 1
+s Filter Open 0
+Main:
+yield
+CheckFilters:
+bdns Slider WarningExit # skip if not connected
+ls r0 db 0 Quantity
+ls r1 db 1 Quantity
+add r0 r0 r1 # summ, 0-200
+div r0 r0 2 # x / 2
+mul r0 r0 0.01 # x * 0.01
+slt r1 r0 0.3 # 1 if x < 0.3
+s Slider Setting r0 # precent
+s Slider On r1 # enable/disable
+# warning
+brnez r0 4 # exit if r0 == 0
+move lightState 1
+sb -1535893860 On 1
+j WarningExit
+beqz lightState WarningExit # exit if r0 == 0
+move lightState 0
+sb -1535893860 On 0
+WarningExit:
+
+OxygenControl:
+l press Filter PressureInput
+l r2 Filter RatioOxygenInput
+# Logic
+sgt r1 press kMiPressFiltrationO2
+sgt r2 r2 kRatioO2
+and r0 r1 r2
+# Set power
+s Filter Mode r0
+
+CarbonDioxideControl:
+l temp Filter TemperatureInput
+sub temp temp 273.15
+l r2 Filter RatioCarbonDioxideInput
+# Logic
+slt r1 r2 kRatioCo2
+slt r2 press kMaxPressure
+slt r3 temp kMaxTemp
+
+or r0 r1 r2
+and r0 r0 r3
+# Set power
+s PumpCo2 On r0
+j Main

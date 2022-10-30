@@ -1,0 +1,54 @@
+define kMinimalTemp 15   # enable this filter
+define kNormalTemp 30   # enable N2 pump
+define kMinRationN2 0.6 # enable N2 pump
+define kMaxPressure 101 # enable N2 pump
+
+alias N2Pump d0
+alias Slider d1
+
+alias temp r15
+alias ratioN2 r14
+alias press r13
+alias lightState r12
+
+Main:
+yield
+
+CheckFilters:
+bdns Slider WarningExit # skip if not connected
+ls r0 db 0 Quantity
+ls r1 db 1 Quantity
+add r0 r0 r1 # summ, 0-200
+div r0 r0 2 # x / 2
+mul r0 r0 0.01 # x * 0.01
+slt r1 r0 0.3 # 1 if x < 0.3
+s Slider Setting r0 # precent
+s Slider On r1 # enable/disable
+# warning
+brnez r0 4 # exit if r0 == 0
+move lightState 1
+sb -1535893860 On 1
+j WarningExit
+beqz lightState WarningExit # exit if r0 == 0
+move lightState 0
+sb -1535893860 On 0
+WarningExit:
+
+l temp db TemperatureOutput
+l ratioN2 db RatioNitrogenOutput
+l press db PressureOutput
+sub temp temp 273.15
+
+slt r1 temp kNormalTemp
+slt r2 ratioN2 kMinRationN2
+slt r3 press kMaxPressure
+
+or r0 r2 r3
+and r0 r0 r1
+brdns N2Pump 2
+s N2Pump On r0
+
+slt r1 temp kMinimalTemp
+s db Mode r1
+
+j Main
