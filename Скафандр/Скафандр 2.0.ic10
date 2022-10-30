@@ -1,6 +1,4 @@
-define kPressIntMax 130
 define kPressIntNorm 101
-define kPressIntMin 50
 define TempNorm 22 # Internal temp
 # EXTERNAL
 define kPressExtMax 130 # max pressure
@@ -8,8 +6,6 @@ define kPressExtMin 60 # min pressure
 define kTempExtMax 45 # max temp
 define kTempExtMin 5 # min temp
 define kRationExtOxygen 0.25 # 25%
-# Settings filters on/off
-define kRatioIntOxygen 0.45 # 45%
 # Settings for open/close visor
 define kAutoVisor 1 # 1=true, 0=false
 
@@ -49,25 +45,16 @@ SetTemperature:
 s Skaf On r0
 
 PressureControl:
-seqz r0 visorIsOpen # 1 if close
-beqz r0 SetAirRelease # if == 0
-l PressInt Skaf Pressure
-l r0 Skaf AirRelease # Get status Air
-beqz r0 CkeckPressure
-sna r0 PressInt kPressIntNorm 5 # ~ 5%
-j SetAirRelease
-CkeckPressure:
-slt r1 PressInt kPressIntMin # <
-sgt r2 PressInt kPressIntMax # >
-or r0 r1 r2
-SetAirRelease:
+select r0 visorIsOpen 0 1
 s Skaf AirRelease r0
 
 FiltrationControl:
 seqz r0 visorIsOpen # 1 if close
-beqz r0 SetFiltration  # if == 0
+beqz r0 SetFiltration # disable if visor open
+l r1 Skaf Filtration
+select r1 r1 0.9 0.45
 l r0 Skaf RatioOxygen
-slt r0 r0 kRatioIntOxygen # if Oxygen.Low
+slt r0 r0 r1 # <
 SetFiltration:
 s Skaf Filtration r0
 
