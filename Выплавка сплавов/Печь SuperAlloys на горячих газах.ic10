@@ -15,6 +15,7 @@ alias speedIn r10
 alias speedOut r9
 alias hotSupply r8
 alias hotDrop r7
+alias pressureWasHigh r6
 s RegIngot Mode 5
 Stop:
 yield
@@ -65,27 +66,29 @@ sb 545937711 On 1
 sb 545937711 Lock 1
 Smelting:
 yield
-lb r2 545937711 Pressure Average
+lb r2 545937711 Pressure Maximum
 seqz r0 r2 # 1 if pressure isNull
 nor r0 r2 Ingot # 1 if r0 == 0 && Ingot == 0
 beq r0 1 Stop # exit if 1
 slt r1 r2 minPressure # if Pressure < min
-sgt r2 r2 maxPressure # if Pressure > max
-lb r5 545937711 Temperature Average
+select r3 pressureWasHigh minPressure maxPressure
+sgt pressureWasHigh r2 r3 # if Pressure > max
+lb r5 545937711 Temperature Maximum
 slt r3 r5 minTemperature # if Temp < min
 sgt r4 r5 maxTemperature # if Temp > max
 sgt r5 r5 TEMPDROPHOTGAS
-or r0 r1 r2
+# COLOR LAMP
+or r0 r1 pressureWasHigh
 or r0 r0 r3
 or r0 r0 r4
 select r0 r0 4 2
 sb 1944485013 Color r0
 # DROP HOT
 select r0 r5 0 1 # 1 if temp not is good
-and hotDrop r2 r5 # enable if high press and temp good to tank
+and hotDrop pressureWasHigh r5 # enable if high press and temp good to tank
 s PumpHotOut On hotDrop
 # DROP WASTE
-and r0 r2 r0 # enable if high press and temp not is good
+and r0 pressureWasHigh r0 # enable if high press and temp not is good
 s PumpWaste On r0
 or r0 hotDrop r0
 brge speedOut MAXOUTPUTPOMP 2   # jump if >=
@@ -99,7 +102,7 @@ s PumpWaste Setting r0
 or hotSupply r1 r3 # enable if low press or low temp
 s PumpHot On hotSupply
 # COOLING
-select r0 r2 0 1
+select r0 pressureWasHigh 0 1
 and r5 r0 r4 # enable if pressure < max and high temp
 s PumpCool On r5
 or r0 r5 hotSupply
