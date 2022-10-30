@@ -1,0 +1,37 @@
+define kMaxPressureTank 7500
+define kMinPressureRoom 95
+
+alias PresReset d0
+alias Slider d1
+
+alias pressure r15
+alias filterStatus r14
+alias filterIsEmpty r13
+
+Main:
+yield
+#filters control
+ls r0 db 0 Quantity
+ls r1 db 1 Quantity
+add r0 r0 r1 # summ, 0-200
+div r0 r0 2 # x / 2
+mul r0 r0 0.01 # x * 0.01
+slt r1 r0 0.5 # 1 if x < 0.5
+brdns Slider 3 # skip if not connected
+s Slider Setting r0 # precent
+s Slider On r1 # enable/disable
+seqz filterIsEmpty r0 # 1 if x == 0
+
+l pressure db PressureInput
+sgt r1 pressure kMinPressureRoom
+
+l pressure db PressureOutput
+slt r2 pressure kMaxPressureTank
+
+and r0 r1 r2
+s db Mode r0
+
+sgt r0 pressure kMaxPressureTank
+s PresReset On r0
+
+j Main

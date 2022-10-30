@@ -1,0 +1,49 @@
+define kMinTemperature 400 # 127 C
+define kMaxPressure 1000 # 1 MPa
+# DEVICE
+alias Furnace d0
+alias HotGas d1
+alias DropGas d2
+alias Disp1 d3
+alias Disp2 d4
+
+Start: # Once for run
+l r0 HotGas PrefabHash
+brne r0 -1129453144 2 # activ vent
+s HotGas Mode 1
+brne r0 -321403609 2 # volume pump
+s HotGas Setting 100
+
+l r0 DropGas PrefabHash
+brne r0 -1129453144 3  # activ vent
+s DropGas Mode 0
+s DropGas PressureExternal 300
+brne r0 -321403609 2 # volume pump
+s HotGas Setting 100
+
+s HotGas Lock 1
+s DropGas Lock 1
+s Furnace Open 1
+
+Main:
+yield
+l r1 Furnace Temperature
+l r2 Furnace Pressure
+
+# Temp Control
+slt r0 r1 kMinTemperature
+s HotGas On r0
+
+# Pressure Control
+sgt r0 r2 kMaxPressure
+s DropGas On r0
+
+ls r0 Furnace 0 Occupied
+
+brdns Disp1 2
+s Disp1 On r0
+
+brdns Disp2 2
+s Disp2 On r0
+
+j Main
