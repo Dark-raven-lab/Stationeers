@@ -1,19 +1,19 @@
 define kPressIntNorm 101
 define TempNorm 22 # Internal temp
 # EXTERNAL
-define kPressExtMax 130 # max pressure
-define kPressExtMin 60 # min pressure
-define kTempExtMax 45 # max temp
-define kTempExtMin 5 # min temp
+define kPressExtMax 150 # max pressure
+define kPressExtMin 40 # min pressure
+define kTempExtMax 50 # max temp
+define kTempExtMin -10 # min temp
 define kRationExtOxygen 0.25 # 25%
 # Settings for open/close visor
-define kAutoVisor 1 # 1=true, 0=false
+define kAutoVisor 1     # 1=true, 0=false
 
 define MaxPollutantExt 0.05
 define MaxVolatilesExt 0.05
 
 # Don't touch
-alias Skaf db
+alias Suit db
 alias Visor d0
 # REGISTERS
 alias visorIsOpen r15
@@ -21,84 +21,75 @@ alias visorWasOpen r14
 alias PressInt r13
 alias counter r12
 alias needLock r11
+alias filtrationOn r10
 
-s Skaf PressureSetting kPressIntNorm
+s Suit PressureSetting kPressIntNorm
 add r0 TempNorm 273.15
-s Skaf TemperatureSetting r0
+s Suit TemperatureSetting r0
 
 Main:
 yield
 l visorIsOpen Visor Open
-beqz needLock TemperatureControl
-s Visor Lock needLock
-move needLock 0
-move counter 0
+
+AutoVisor:
+beqz kAutoVisor AutoVisorExit # exit if disable logic
+l r0 Visor Lock # read lock
+bgtz r0 AutoVisorExit # exit if locked
+l r0 Suit PressureExternal
+slt r1 r0 kPressExtMax
+sgt r2 r0 kPressExtMin
+and r0 r1 r2 # 1 if good pressure
+
+l r1 Suit TemperatureExternal
+sub r1 r1 273.15
+slt r2 r1 kTempExtMax
+sgt r1 r1 kTempExtMin
+and r1 r2 r1 # 1 if good temperature
+
+and r0 r0 r1 # 1 if (Press & Temp)
+
+l r2 Visor Open
+beq r0 r2 AutoVisorExit # exit if this state
+s Visor Open r0
+j Main
+AutoVisorExit:
+
 TemperatureControl:
 seqz r0 visorIsOpen # 1 if close
 beqz r0 SetTemperature # if == 0
-l r0 Skaf TemperatureExternal
+l r0 Suit TemperatureExternal
 sub r0 r0 273.15
 slt r1 r0 kTempExtMin
 sgt r2 r0 kTempExtMax
 or r0 r1 r2
 SetTemperature:
-s Skaf On r0
-
-PressureControl:
-select r0 visorIsOpen 0 1
-s Skaf AirRelease r0
+s Suit On r0
 
 FiltrationControl:
-seqz r0 visorIsOpen # 1 if close
-beqz r0 SetFiltration # disable if visor open
-l r1 Skaf Filtration
-select r1 r1 0.9 0.45
-l r0 Skaf RatioOxygen
-slt r0 r0 r1 # <
-SetFiltration:
-s Skaf Filtration r0
+l r1 Suit RatioOxygen
+l r0 Suit Filtration
+select r2 r0 0.9 0.45
+slt r0 r1 r2 # <
+select r0 visorIsOpen 0 r0
+s Suit Filtration r0
+beqz visorIsOpen PressureControl
 
-AutoVisor:
-beqz kAutoVisor Main # exit if disable logic
-l r0 Visor Lock # read lock
-bgtz r0 Main # exit if locked
-VisorCheckExternal:
-l r0 Skaf PressureExternal
-slt r1 r0 kPressExtMax
-sgt r2 r0 kPressExtMin
-and r0 r1 r2 # 1 if good pressure
-
-l r1 Skaf TemperatureExternal
-sub r1 r1 273.15
-slt r2 r1 kTempExtMax
-sgt r3 r1 kTempExtMin
-and r1 r2 r3 # 1 if good temperature
-
-and r0 r0 r1 # 1 if (Press & Temp)
-
-beqz visorWasOpen SetVisorOpen # first open
-beqz r0 SetVisorOpen # bad pressure or temp
-VisorWasOpen:
-# was open
-l r1 Skaf RatioOxygen
 sgt r1 r1 kRationExtOxygen
-and r0 r0 r1 # 1 if (Oxygen & Press & Temp)
+l r2 Suit RatioPollutant
+slt r2 r2 MaxPollutantExt
+l r3 Suit RatioVolatiles
+slt r3 r3 MaxVolatilesExt
+and r2 r2 r3
+and r0 r2 r1
+bgtz r0 PressureControl # is good
+# not good
+s Visor Open 0
+sleep 0.5
+s Visor Lock 1
 
-l r1 Skaf RatioPollutant
-slt r1 r1 MaxPollutantExt
-and r0 r0 r1 # 1 if (!Pollutant & Oxygen & Press & Temp)
+PressureControl:
+#nor r0 r0 visorIsOpen
+select r0 visorIsOpen 0 1
+s Suit AirRelease r0
 
-l r1 Skaf RatioVolatiles
-slt r1 r1 MaxVolatilesExt
-and r0 r0 r1 # 1 if (!Volatiles & !Pollutant & Oxygen & Press & Temp)
-
-#bge counter 30 SetVisorOpen # >=
-#add counter counter 1
-bgtz r0 SetVisorOpen # if open
-move needLock 1 # 1 if need closed
-SetVisorOpen:
-s Visor Open r0
-move visorWasOpen r0
-bgtz r0 Main # exit if visor open
-move counter 0
 j Main

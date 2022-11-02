@@ -1,0 +1,90 @@
+define kAutoVisor 0     # 1=true, 0=false
+define kSetPressure 205
+define kPropPressureO2 27
+
+alias Suit db
+alias Visor d0
+alias airEnable r15
+alias filterEnable r14
+alias pressInt r13
+alias pressExt r12
+alias ratioO2 r11
+alias toxinMissing r10
+alias PosX r9
+alias PosZ r8
+
+Start: 
+l PosX Suit PositionX #save position
+l PosZ Suit PositionZ #save position
+
+loop:
+yield
+l pressInt Suit Pressure
+l ratioO2 Suit RatioOxygen
+#---air & filter control section
+mul ratioO2 ratioO2 pressInt
+sle filterEnable ratioO2 kPropPressureO2
+select r0 filterEnable 0 1
+s Suit On r0 # temperature
+sle airEnable pressInt kSetPressure
+#---NaviSy section
+l r1 Suit PositionX
+l r0 Suit PositionZ
+sub r1 r1 PosX
+mul r1 r1 r1
+sub r0 r0 PosZ
+mul r0 r0 r0
+add r0 r0 r1
+sqrt r0 r0
+add r0 r0 1 #-don't scare too low value
+select r0 airEnable 999 r0
+s Suit PressureSetting r0
+s Suit AirRelease airEnable
+s Suit Filtration filterEnable
+# Visor
+beqz kAutoVisor loop # disabled
+l r0 Visor Lock
+bgtz r0 loop # visor locked
+
+l pressExt Suit PressureExternal
+slt r1 pressExt 150
+sgt r2 pressExt 30 # dont low kPropPressureO2
+and r0 r1 r2 # 1 if good pressure
+
+l r1 Suit TemperatureExternal
+sub r1 r1 273.15
+slt r2 r1 50
+sgt r1 r1 -10
+and r1 r2 r1 # 1 if good temperature
+
+and r0 r0 r1 # 1 if (Press & Temp)
+beqz r0 SetOpeninVisor
+l r1 Visor Open
+beqz r1 SetOpeninVisor # was closed
+l ratioO2 Suit RatioOxygen
+mul ratioO2 ratioO2 pressExt
+sgt r1 ratioO2 kPropPressureO2
+
+l r2 Suit RatioPollutant
+sge r2 r2 0.005
+l r3 Suit RatioVolatiles
+sge r3 r3 0.005
+nor toxinMissing r2 r3
+
+and r1 r1 toxinMissing
+and r0 r0 r1
+
+bgtz r0 SetOpeninVisor
+s Visor Open 0
+sleep 1
+s Visor Lock 1
+
+SetOpeninVisor:
+l r1 Visor Open
+beq r1 r0 loop
+s Visor Open r0
+bgtz toxinMissing loop
+sleep 0.5
+s Visor Lock 1
+move toxinMissing 1
+j loop
