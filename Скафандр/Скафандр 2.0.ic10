@@ -1,31 +1,19 @@
 define kPressIntNorm 101
-define TempNorm 22 # Internal temp
-# EXTERNAL
-define kPressExtMax 150 # max pressure
-define kPressExtMin 40 # min pressure
-define kTempExtMax 50 # max temp
-define kTempExtMin -10 # min temp
 define kRationExtOxygen 0.25 # 25%
 # Settings for open/close visor
 define kAutoVisor 1     # 1=true, 0=false
-
-define MaxPollutantExt 0.05
-define MaxVolatilesExt 0.05
 
 # Don't touch
 alias Suit db
 alias Visor d0
 # REGISTERS
 alias visorIsOpen r15
-alias visorWasOpen r14
-alias PressInt r13
-alias counter r12
-alias needLock r11
-alias filtrationOn r10
+alias PressInt r14
+alias filtrationOn r13
 
-s Suit PressureSetting kPressIntNorm
-add r0 TempNorm 273.15
-s Suit TemperatureSetting r0
+Start:
+s Suit TemperatureSetting 298 # 25 C
+s Suit PressureSetting 105
 
 Main:
 yield
@@ -36,14 +24,14 @@ beqz kAutoVisor AutoVisorExit # exit if disable logic
 l r0 Visor Lock # read lock
 bgtz r0 AutoVisorExit # exit if locked
 l r0 Suit PressureExternal
-slt r1 r0 kPressExtMax
-sgt r2 r0 kPressExtMin
+slt r1 r0 150
+sgt r2 r0 30
 and r0 r1 r2 # 1 if good pressure
 
 l r1 Suit TemperatureExternal
 sub r1 r1 273.15
-slt r2 r1 kTempExtMax
-sgt r1 r1 kTempExtMin
+slt r2 r1 50
+sgt r1 r1 -10
 and r1 r2 r1 # 1 if good temperature
 
 and r0 r0 r1 # 1 if (Press & Temp)
@@ -59,8 +47,8 @@ seqz r0 visorIsOpen # 1 if close
 beqz r0 SetTemperature # if == 0
 l r0 Suit TemperatureExternal
 sub r0 r0 273.15
-slt r1 r0 kTempExtMin
-sgt r2 r0 kTempExtMax
+slt r1 r0 50
+sgt r2 r0 -10
 or r0 r1 r2
 SetTemperature:
 s Suit On r0
@@ -76,9 +64,9 @@ beqz visorIsOpen PressureControl
 
 sgt r1 r1 kRationExtOxygen
 l r2 Suit RatioPollutant
-slt r2 r2 MaxPollutantExt
+slt r2 r2 0.005
 l r3 Suit RatioVolatiles
-slt r3 r3 MaxVolatilesExt
+slt r3 r3 0.005
 and r2 r2 r3
 and r0 r2 r1
 bgtz r0 PressureControl # is good
