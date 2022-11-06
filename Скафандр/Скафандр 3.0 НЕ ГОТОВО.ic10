@@ -1,5 +1,4 @@
 define kAutoVisor 1     # 1=true, 0=false
-define kSetPressure 105
 define kMaxPressure 200
 define kMinPressure 70
 define kPropPressureO2 35
@@ -25,6 +24,7 @@ loop:
 yield
 l pressInt Suit Pressure
 l ratioO2 Suit RatioOxygen
+l visorOpen Visor Open
 #---air & filter control section
 mul ratioO2 ratioO2 pressInt
 sle filterEnable ratioO2 kPropPressureO2
@@ -45,19 +45,20 @@ sqrt r0 r0
 add r0 r0 1 #-don't scare too low value
 select airEnable visorOpen 0 airEnable
 select filterEnable visorOpen 0 filterEnable
-select r0 airEnable 999 r0
+select r0 airEnable 999 ratioO2
 s Suit PressureSetting r0
 s Suit AirRelease airEnable
 s Suit Filtration filterEnable
 # Visor
 beqz kAutoVisor loop # disabled
 l pressExt Suit PressureExternal
-brgt pressExt 1 2
+# unlock if pressure < 1 kPa
+brgt pressExt 1 3
 s Visor Lock 0
-l visorOpen Visor Lock
-bgtz visorOpen loop # visor locked
+j loop
 
-l pressExt Suit PressureExternal
+l r0 Visor Lock
+bgtz r0 loop # visor locked
 slt r1 pressExt 150
 sgt r2 pressExt 30 # dont low kPropPressureO2
 and r0 r1 r2 # 1 if good pressure
@@ -70,8 +71,7 @@ and r1 r2 r1 # 1 if good temperature
 
 and r0 r0 r1 # 1 if (Press & Temp)
 beqz r0 SetOpeninVisor
-l r1 Visor Open
-beqz r1 SetOpeninVisor # was closed
+beqz visorOpen SetOpeninVisor # was closed
 
 l ratioO2 Suit RatioOxygen
 mul ratioO2 ratioO2 pressExt
