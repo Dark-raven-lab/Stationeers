@@ -10,31 +10,41 @@ alias PressInt r15
 alias PressExt r14
 alias CurPress r13
 alias PressOut r12
-s DoorInt On 1
-s DoorExt On 1
+alias autoMode r11
+Init:
+l r0 DoorInt Open
+select r1 r0 0 1
+s DoorExt Open r1
+s DoorInt On r0
+s DoorExt On r1
 s DoorInt Setting 0
 s DoorExt Setting 0
 s DoorInt Lock 0
 s DoorExt Lock 0
-s DoorInt Open 0
-s DoorExt Open 0
-move PressInt 2
-move PressExt 2
+move PressInt 0
+move PressExt 0
+move autoMode 1
+
 Main:
 yield
-lb r0 576516101 On Sum
+lb r0 576516101 On Maximum
 seqz r0 r0 # 1 if == 0
 s DoorInt Mode r0
 s DoorExt Mode r0
-brnez r0 4 # if != 0 goto
+bgtz r0 CheckDoor
 s DoorInt On 1
 s DoorExt On 1
+move autoMode 0
 j Main
+
+CheckDoor:
+beqz autoMode Init
 l r1 DoorInt Setting
 l r0 DoorExt Setting
 beq r1 1 GoInt # if Open
 beq r0 1 GoExt # if Open
 j Main
+
 GoInt:
 l PressInt Gas Pressure # Save cur pressure
 move PressOut PressExt
