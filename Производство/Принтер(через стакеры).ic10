@@ -50,7 +50,11 @@ l r0 Print On # Read printer OnOff
 beqz r0 Clear # if printer off - exit
 l ExportPieces Print ExportCount # Read current count
 sgtz r0 ExportPieces # 1 if > 0
+l r1 Print Open
+or r0 r0 r1
 s Stacker On r0 # Set OnOff stacker
+breqz r1 2
+s Stacker Activate 1
 #s Print Lock r0 # block
 l NeedPieces Stacker Setting # Read expected
 blt ExportPieces NeedPieces ra # exit if cur < exp
