@@ -33,25 +33,25 @@ j Main
 GoPrint1:
 alias Print d3
 alias Stacker d0
-j Print
+j PrintLogic
 
 GoPrint2:
 alias Print d4
 alias Stacker d1
-j Print
+j PrintLogic
 
 GoPrint3:
 alias Print d5
 alias Stacker d2
-j Print
+j PrintLogic
 
-Print:
+PrintLogic:
 l r0 Print On # Read printer OnOff
 beqz r0 Clear # if printer off - exit
 l ExportPieces Print ExportCount # Read current count
 sgtz r0 ExportPieces # 1 if > 0
 s Stacker On r0 # Set OnOff stacker
-s Print Lock r0 # block
+#s Print Lock r0 # block
 l NeedPieces Stacker Setting # Read expected
 blt ExportPieces NeedPieces ra # exit if cur < exp
 s Print Activate 0 # Disable working
@@ -64,8 +64,8 @@ yield
 s Print On 0
 s Stacker On 0
 Clear:
-s Stacker ClearMemory 1
 s Print ClearMemory 1
+s Stacker ClearMemory 1
 s Print Lock 0
 s Stacker Lock 0
 j ra
