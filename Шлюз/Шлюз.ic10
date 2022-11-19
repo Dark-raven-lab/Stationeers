@@ -12,11 +12,10 @@ alias CurPress r13
 alias PressOut r12
 alias autoMode r11
 Init:
-l r0 DoorInt Open
-select r1 r0 0 1
-s DoorExt Open r1
-s DoorInt On r0
-s DoorExt On r1
+s DoorExt Open 0
+s DoorInt Open 0
+s DoorInt On 1
+s DoorExt On 1
 s DoorInt Setting 0
 s DoorExt Setting 0
 s DoorInt Lock 0
@@ -24,7 +23,6 @@ s DoorExt Lock 0
 move PressInt 0
 move PressExt 0
 move autoMode 1
-
 Main:
 yield
 lb r0 576516101 On Maximum
