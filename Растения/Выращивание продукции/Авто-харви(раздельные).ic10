@@ -58,17 +58,22 @@ bgtz r0 GrowthCheck
 
 CheckPlant:
 ls r0 Harvi 0 Occupied
+ls r1 Harvi 2 Occupied
+or r0 r0 r1
 s Harvi On r0
 s Harvi Plant r0
 j ra
 
 GrowthCheck:
 add count count 1
-ls r0 Ferm 0 Mature
-ls r1 Ferm 0 Seeding
-sgtz r0 r0
-sgtz r1 r1
-or r2 r0 r1
-s Harvi On r2
-s Harvi Harvest r2
+ls r0 Ferm 0 Seeding
+seq r0 r0 1
+beq r0 1 PowerHarvi
+l r1 Harvi On
+ls r2 Ferm 0 Mature
+sgtz r2 r2
+and r0 r1 r2
+PowerHarvi:
+s Harvi On r0
+s Harvi Harvest r0
 j ra

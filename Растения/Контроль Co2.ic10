@@ -1,0 +1,68 @@
+define kMaxPressure 100
+define kMinTemp 30
+# PUMP CO2
+define kRatio1 0.2
+# FILTER CO2 (HOT)
+define kRatio2 0.05
+
+# DEVICES
+alias FilterCo2 db
+alias PumpCo2 d0
+alias Slider d1
+# REGISTERS
+alias lightState r15
+alias temperature r13
+alias ratioCO2 r12
+Start:
+brdns PumpCo2 3
+s PumpCo2 Lock 1
+s PumpCo2 Setting 50
+brdns Slider 2
+s Slider Lock 1
+s FilterCo2 Open 0
+Main:
+yield
+CheckFilters:
+bdns Slider WarningExit # skip if not connected
+ls r0 db 0 Quantity
+ls r1 db 1 Quantity
+add r0 r0 r1 # summ, 0-200
+div r0 r0 2 # x / 2
+mul r0 r0 0.01 # x * 0.01
+slt r1 r0 0.1 # 1 if x < 10%
+s Slider Setting r0 # precent
+s Slider On r1 # enable/disable
+# warning
+brnez r0 4 # exit if r0 == 0
+move lightState 1
+sb -1535893860 On 1
+j WarningExit
+beqz lightState WarningExit # exit if r0 == 0
+move lightState 0
+sb -1535893860 On 0
+WarningExit:
+
+l r1 FilterCo2 PressureOutput
+slt r1 r1 kMaxPressure # PRESSURE
+
+l ratioCO2 FilterCo2 RatioCarbonDioxideOutput
+slt r2 ratioCO2 kRatio1 # RATIO
+
+l temperature FilterCo2 TemperatureOutput
+sub temperature temperature 273.15
+
+slt r3 temperature kMinTemp # TEMPERATURE
+
+or r0 r1 r2
+and r0 r0 r3
+
+brdns PumpCo2 2
+s PumpCo2 On r0
+
+slt r2 ratioCO2 kRatio2 # RATIO
+
+and r0 r1 r2
+and r0 r0 r3
+s FilterCo2 Mode r0
+
+j Main

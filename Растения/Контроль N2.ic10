@@ -1,4 +1,4 @@
-define kMinimalTemp 15   # enable this filter
+define kMinimalTemp 5   # enable this filter
 define kNormalTemp 30   # enable N2 pump
 define kMinRationN2 0.6 # enable N2 pump
 define kMaxPressure 101 # enable N2 pump
@@ -21,7 +21,7 @@ ls r1 db 1 Quantity
 add r0 r0 r1 # summ, 0-200
 div r0 r0 2 # x / 2
 mul r0 r0 0.01 # x * 0.01
-slt r1 r0 0.3 # 1 if x < 0.3
+slt r1 r0 0.1 # 1 if x < 10%
 s Slider Setting r0 # precent
 s Slider On r1 # enable/disable
 # warning
@@ -49,6 +49,7 @@ brdns N2Pump 2
 s N2Pump On r0
 
 slt r1 temp kMinimalTemp
+or r1 r1 r0
 s db Mode r1
 
 j Main
