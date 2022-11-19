@@ -1,21 +1,25 @@
-#satellite switcher V ф
+# SETTINGS
+define kStepVertcal 5
+define kStepHorisont 10
+# DEVICES
 alias SatDish d0
 alias DiodeSlide d1
 alias Speaker d3
-
+# REGISTERS
 alias LastID r15
 alias Vstep r13
 alias Hstep r14
-move Vstep 5
-move Hstep 10
-loop:
-sleep 0.5
+Start:
+move Vstep kStepVertcal
+move Hstep kStepHorisont
+Main:
+yield
 yield
 l r0 SatDish SignalStrength
 l r2 DiodeSlide On
 s db Setting r0
 s DiodeSlide Setting r0
-bgtz r2 loop # op2, if op1 > 0
+bgtz r2 Main # op2, if op1 > 0
 l r1 SatDish SignalID
 
 beq r1 LastID rotate
@@ -27,7 +31,7 @@ s Speaker Mode 4
 s Speaker On 1
 sleep 3
 s Speaker On 0
-j loop
+j Main
 rotate:
 l r0 SatDish Vertical
 l r1 SatDish Horizontal
@@ -37,7 +41,7 @@ bgt r0 90 Vrev # op3, if op1 > op2
 step:
 s SatDish Vertical r0
 s SatDish Horizontal r1
-j loop
+j Main
 Vrev:
 mul Vstep Vstep -1 # Vstep * -1
 max r0 r0 5
