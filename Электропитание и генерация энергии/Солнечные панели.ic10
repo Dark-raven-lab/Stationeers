@@ -1,0 +1,73 @@
+# SOLAR TRACKER 2 AXIS NIGHT RESET
+
+# Set the direction that the solar panels
+# power port points to (0, 90, 180 or 270)
+define PanelPort 270
+
+# Set the direction that the daylight sensor
+# data port points to (0, 90, 180 or 270)
+define SensorPort 90
+
+# Set to the orientation that sensor is facing (1 if facing up or -1 if facing down)
+define Orientation 1
+
+# Devices:
+alias dSensor d0  # Daylight Sensor (optional)
+alias dSetHor d1  # Horizontal Setting Holder (optional)
+alias dSetVer d2  # Vertical Setting Holder (optional)
+
+# NO CHANGES AFTER THIS POINT
+
+alias rHor r1
+alias rVer r2
+alias rDay r3
+
+Loop:
+yield
+
+# Get sensor readings
+bdns dSensor SkipL
+l rHor dSensor Horizontal
+l rVer dSensor Vertical
+j SkipLB
+SkipL:
+lb rHor 1076425094 Horizontal Average
+lb rVer 1076425094 Vertical Average
+SkipLB:
+
+# Horizontal adjustments
+mul rHor rHor Orientation
+add rHor rHor SensorPort
+add rHor rHor 90
+
+# Vertical adjustments
+sub rVer 90 rVer
+mul rVer rVer Orientation
+
+# Daytime/nighttime
+sge rDay rVer 0
+s db Setting rDay
+
+# Horizontal processing
+mul rHor rHor rDay
+sub rHor rHor PanelPort
+add rHor rHor 180
+sb -2045627372 Horizontal rHor # Solar Panel
+sb -539224550 Horizontal rHor # Solar Panel (Dual)
+sb -934345724 Horizontal rHor # Solar Panel (Heavy)
+sb -1545574413 Horizontal rHor # Solar Panel (Heavy Dual)
+bdns dSetHor SkipSH
+s dSetHor Setting rHor
+SkipSH:
+
+# Vertical processing
+mul rVer rVer rDay
+sb -2045627372 Vertical rVer # Solar Panel
+sb -539224550 Vertical rVer # Solar Panel (Dual)
+sb -934345724 Vertical rVer # Solar Panel (Heavy)
+sb -1545574413 Vertical rVer # Solar Panel (Heavy Dual)
+bdns dSetVer SkipSV
+s dSetVer Setting rVer
+SkipSV:
+
+j Loop
