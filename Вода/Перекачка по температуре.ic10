@@ -25,11 +25,11 @@ s Combuster Open 0
 Main:
 yield
 l r1 Combuster PressureInput
-sgtz fuelAvailable r1
+sgt fuelAvailable r1 1 # 1 kPa
 
 l r1 Combuster TotalMolesOutput
 slt hotWaterMolesLow r1 kMaxHotMoles
-sgtz hotWaterAvailable r1
+sgt hotWaterAvailable r1 1
 
 l r1 Combuster TemperatureOutput
 sub r1 r1 273.15

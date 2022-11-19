@@ -1,5 +1,5 @@
 define kCountRecycler 50
-define kCountCentrifuge 200
+define kCountCentrifuge 10
 
 alias ArcFurnace d0
 alias ActVent d1
@@ -21,6 +21,8 @@ s ArcFurnace Activate firnaceImport
 
 CentrifugeLogic:
 bdns Centrifuge RecyclerLogic
+ls r0 Centrifuge 0 Occupied
+s Centrifuge On r0
 l r0 Centrifuge Reagents
 sge r0 r0 kCountCentrifuge
 s Centrifuge Open r0

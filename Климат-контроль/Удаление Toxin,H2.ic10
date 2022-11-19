@@ -1,0 +1,43 @@
+alias Filter db
+alias Slider d1
+
+alias lightState r15
+
+Start:
+brdns Slider 2
+s Slider Lock 1
+s Filter Open 0
+Main:
+yield
+CheckFilters:
+bdns Slider WarningExit # skip if not connected
+ls r1 db 0 Quantity
+ls r2 db 1 Quantity
+mul r1 r1 0.01 # x * 0.01
+mul r2 r2 0.01 # x * 0.01
+slt r3 r1 0.3 # 1 if x < 0.3
+slt r4 r2 0.3 # 1 if x < 0.3
+or r0 r3 r4
+s Slider On r0 # enable/disable
+slt r0 r1 r2
+select r0 r0 r1 r2
+s Slider Setting r0 # precent
+# warning
+brnez r0 4 # exit if r0 == 0
+move lightState 1
+sb -1535893860 On 1
+j WarningExit
+beqz lightState WarningExit # exit if r0 == 0
+move lightState 0
+sb -1535893860 On 0
+WarningExit:
+
+l r1 Filter RatioVolatilesInput
+l r2 Filter RatioPollutantInput
+
+sgtz r1 r1
+sgtz r2 r2
+
+or r0 r1 r2
+s Filter Mode r0
+j Main

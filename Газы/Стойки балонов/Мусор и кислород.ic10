@@ -1,0 +1,28 @@
+alias WasteTank d0
+alias WastePump d1
+
+alias O2Tank d3
+alias O2RegPres d4
+alias O2Slider d5
+
+Main:
+yield
+l r0 WasteTank Pressure
+sgtz r0 r0
+s WastePump On r0
+
+l r1 O2RegPres Setting
+l r2 O2Tank Pressure
+slt r0 r2 r1
+
+bdns O2Slider SkipSlider
+div r1 r2 r1
+s O2Slider Setting r1
+sge r1 r1 1
+s O2Slider On r1
+SkipSlider:
+
+ls r1 O2Tank 0 Occupied
+select r0 r1 r0 0
+s O2RegPres On r0
+j Main

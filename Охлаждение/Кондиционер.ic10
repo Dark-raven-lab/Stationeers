@@ -1,0 +1,55 @@
+define kTemperature 298.15 # 298.15 = 25 C, 273 = 0 C
+define kHysteresis 5    # range maxRange, minRange
+define kCooling 1       # 1 = cooling, 0 = heating
+define kDiff 15         #
+
+# devices
+alias Conditioner db
+alias GasSensor d0
+alias Lamp d1
+#REGISTERS
+alias tempInt r15
+alias tempOut r14
+alias enabled r13
+alias range r12
+alias coolantRedy r8
+
+Start:
+s Conditioner Setting kTemperature
+brdns Lamp 2
+s Lamp Color 4
+Main:
+yield
+l tempInt GasSensor Temperature
+l tempOut Conditioner TemperatureOutput2
+l enabled Conditioner Mode
+
+beqal kCooling 1 Cooling
+beqal kCooling 0 Heating
+
+and r0 coolantRedy enabled
+s Conditioner Mode r0
+
+brdns Lamp 3
+select r0 coolantRedy 0 1
+s Lamp On r0
+
+j Main
+
+Cooling:
+add range kTemperature kHysteresis
+select r1 enabled kTemperature range
+sgt enabled tempInt r1
+# out
+add range kTemperature kDiff
+slt coolantRedy tempOut range
+j ra
+
+Heating:
+sub range kTemperature kHysteresis
+select r1 enabled kTemperature range
+slt enabled tempInt r1
+# out
+sub range kTemperature kDiff
+sgt coolantRedy tempOut range
+j ra
