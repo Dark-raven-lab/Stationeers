@@ -53,6 +53,7 @@ s db Setting powerPercent
 slt energyDecreases r2 oldCharge # new charge < old charge
 slt isLowCharge powerPercent kIsLowCharge # < 10%
 sub diffCharge r2 oldCharge
+round diffCharge diffCharge
 move oldCharge r2 # for next tick
 BeaconPower:
 beqz kAutoEnabled StormControl # DISABLED
