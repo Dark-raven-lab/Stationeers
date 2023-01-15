@@ -28,7 +28,6 @@ yield
 l visorOpen Visor Open
 l pressure Suit Pressure
 l ratioO2 Suit RatioOxygen
-l visorOpen Visor Open
 #---air & filter control section
 mul ratioO2 ratioO2 pressure
 sle filterEnable ratioO2 kSuitPropPressO2
@@ -98,6 +97,7 @@ s Visor Lock 1
 j Loop
 
 SetOpeninVisor:
+l visorOpen Visor Open
 beq visorOpen r0 Loop
 s Visor Open r0
 j Loop
