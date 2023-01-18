@@ -2,25 +2,33 @@
 
 # Set the direction that the solar panels
 # power port points to (0, 90, 180 or 270)
-define PanelPort 270
+define PanelPort 0
 
 # Set the direction that the daylight sensor
 # data port points to (0, 90, 180 or 270)
-define SensorPort 90
+define SensorPort 0
 
 # Set to the orientation that sensor is facing (1 if facing up or -1 if facing down)
 define Orientation 1
 
 # Devices:
 alias dSensor d0  # Daylight Sensor (optional)
-alias dSetHor d1  # Horizontal Setting Holder (optional)
-alias dSetVer d2  # Vertical Setting Holder (optional)
+alias dLCDPower d1 # Energy generation (optional)
+alias dSetHor d3  # Horizontal Setting Holder (optional)
+alias dSetVer d4  # Vertical Setting Holder (optional)
 
 # NO CHANGES AFTER THIS POINT
 
-alias rHor r1
-alias rVer r2
-alias rDay r3
+define kSensorHash 1076425094 # Daily Sensor
+define kSolarHash -2045627372 # Solar Panel
+define kDualSolarHash -539224550 # Solar Panel (Dual)
+define kHavySolarHash -934345724 # Solar Panel (Heavy)
+define kDualHavySolarHash -1545574413 # Solar Panel (Heavy Dual)
+
+alias rHor r15
+alias rVer r14
+alias rDay r13
+alias rPowerGen r12
 
 Loop:
 yield
@@ -31,8 +39,8 @@ l rHor dSensor Horizontal
 l rVer dSensor Vertical
 j SkipLB
 SkipL:
-lb rHor 1076425094 Horizontal Average
-lb rVer 1076425094 Vertical Average
+lb rHor kSensorHash Horizontal Average
+lb rVer kSensorHash Vertical Average
 SkipLB:
 
 # Horizontal adjustments
@@ -52,22 +60,36 @@ s db Setting rDay
 mul rHor rHor rDay
 sub rHor rHor PanelPort
 add rHor rHor 180
-sb -2045627372 Horizontal rHor # Solar Panel
-sb -539224550 Horizontal rHor # Solar Panel (Dual)
-sb -934345724 Horizontal rHor # Solar Panel (Heavy)
-sb -1545574413 Horizontal rHor # Solar Panel (Heavy Dual)
+sb kSolarHash Horizontal rHor
+sb kDualSolarHash Horizontal rHor
+sb kHavySolarHash Horizontal rHor
+sb kDualHavySolarHash Horizontal rHor
 bdns dSetHor SkipSH
 s dSetHor Setting rHor
 SkipSH:
 
 # Vertical processing
 mul rVer rVer rDay
-sb -2045627372 Vertical rVer # Solar Panel
-sb -539224550 Vertical rVer # Solar Panel (Dual)
-sb -934345724 Vertical rVer # Solar Panel (Heavy)
-sb -1545574413 Vertical rVer # Solar Panel (Heavy Dual)
+sb kSolarHash Vertical rVer
+sb kDualSolarHash Vertical rVer
+sb kHavySolarHash Vertical rVer
+sb kDualHavySolarHash Vertical rVer
 bdns dSetVer SkipSV
 s dSetVer Setting rVer
 SkipSV:
+
+bdns dLCDPower SkipCheckPower
+move rPowerGen 0
+lb r0 kSolarHash Charge Sum
+add rPowerGen rPowerGen r0
+lb r0 kDualSolarHash Charge Sum
+add rPowerGen rPowerGen r0 
+lb r0 kHavySolarHash Charge Sum
+add rPowerGen rPowerGen r0 
+lb r0 kDualHavySolarHash Charge Sum
+add rPowerGen rPowerGen r0 
+s dLCDPower Mode 1
+s dLCDPower Setting rPowerGen
+SkipCheckPower:
 
 j Loop
