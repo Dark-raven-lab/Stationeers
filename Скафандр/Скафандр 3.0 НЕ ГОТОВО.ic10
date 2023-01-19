@@ -47,7 +47,7 @@ sub r0 r0 posZ
 mul r0 r0 r0
 add r0 r0 r1
 sqrt r0 r0
-add r0 r0 1 # distance
+add r0 r0 50 # distance
 select airEnable visorOpen 0 airEnable
 select filterEnable visorOpen 0 filterEnable
 select r0 airEnable 999 r0
