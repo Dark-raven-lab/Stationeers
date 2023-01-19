@@ -1,5 +1,5 @@
 # SETTINGS
-define kStepVertcal 5
+define kStepVertcal 3
 define kStepHorisont 10
 # DEVICES
 alias SatDish d0
@@ -7,23 +7,24 @@ alias DiodeSlide d1
 alias Speaker d3
 # REGISTERS
 alias LastID r15
+alias signal r14
 alias Vstep r13
-alias Hstep r14
+alias Hstep r12
 Start:
 move Vstep kStepVertcal
 move Hstep kStepHorisont
 Main:
-yield
-yield
-l r0 SatDish SignalStrength
+#yield
+#yield
+l signal SatDish SignalStrength
 l r2 DiodeSlide On
-s db Setting r0
-s DiodeSlide Setting r0
+s db Setting signal
+s DiodeSlide Setting signal
 bgtz r2 Main # op2, if op1 > 0
 l r1 SatDish SignalID
 
 beq r1 LastID rotate
-blt r0 0.95 rotate # op3, if op1 < op2
+blt signal 0.95 rotate # op3, if op1 < op2
 
 move LastID r1
 s DiodeSlide On 1
@@ -35,12 +36,11 @@ j Main
 rotate:
 l r0 SatDish Vertical
 l r1 SatDish Horizontal
-add r0 r0 Vstep # Current V + 5
-blt r0 5 Vrev # op3, if op1 < op2
-bgt r0 90 Vrev # op3, if op1 > op2
+add r0 r0 Vstep
+ble r0 5 Vrev # op3, if op1 < op2
+bge r0 90 Vrev # op3, if op1 > op2
 step:
 s SatDish Vertical r0
-s SatDish Horizontal r1
 j Main
 Vrev:
 mul Vstep Vstep -1 # Vstep * -1
@@ -49,9 +49,12 @@ min r0 r0 90
 add r1 r1 Hstep
 blt r1 0 Hrev # op3, if op1 < op2
 bgt r1 355 Hrev # op3, if op1 > op2
-j step
+s SatDish Horizontal r1
+yield
+j Main
 Hrev:
 mul Hstep Hstep -1 # Vstep * -1
 max r1 r1 0
 min r1 r1 355
+s SatDish Horizontal r1
 j step

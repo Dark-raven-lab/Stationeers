@@ -1,0 +1,23 @@
+define kMaxTempOut 28
+# DEVICES
+alias Conditioner db
+
+Start:
+s Conditioner Open 0
+
+Main:
+yield
+l r0 Conditioner TemperatureInput
+l r1 Conditioner Setting
+
+sgt r1 r0 r1
+
+l r0 Conditioner TemperatureOutput2
+sub r0 r0 273.15
+slt r2 r0 kMaxTempOut
+
+and r0 r1 r2
+
+s Conditioner Mode r0
+
+j Main
