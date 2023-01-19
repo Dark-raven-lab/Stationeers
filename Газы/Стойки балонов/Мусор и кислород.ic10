@@ -9,7 +9,7 @@ define kMixerTypeGas2 1
 define kLocked 0
 
 # --- DEVICES
-alias TankWaste d0
+alias StorageWaste d0
 alias OutWaste d1
 alias Tank d3
 alias Mixer d4
@@ -34,7 +34,7 @@ s OutWaste On 0
 Main:
 yield
 # --- LOGIC TANK WASTE
-l pressure TankWaste Pressure
+l pressure StorageWaste Pressure
 sgtz wastePower pressure
 
 # --- LOGIC TANK
@@ -63,13 +63,12 @@ select r2 kMixerInput1Oxygen r1 0
 mul r2 r2 100
 s Mixer Setting r2
 # check hash for lcd
-brne kMixerTypeGas2 1 1
+brne kMixerTypeGas2 1 2
 move r2 kN2
-brne kMixerTypeGas2 2 1
+brne kMixerTypeGas2 2 2
 move r2 kCO2
 # check use input
 select r2 r1 kO2 r2
-
 # write hash for lcd
 s db Setting r2
 
@@ -78,7 +77,9 @@ s Mixer On r0
 s OutWaste On wastePower
 
 bdns Slider Main
-l pressure Tank Pressure
+l r1 Tank Pressure
+l r2 StorageWaste Pressure
+select pressure r0 r1 r2
 div r1 pressure maxPress
 s Slider Setting r1
 sge r1 r1 1
