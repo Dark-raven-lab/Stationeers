@@ -1,21 +1,48 @@
 define MaxPresInGasTank 15000 # pA
 define MinTempForFiltration 130 # C
+define kMinRatioForFiltration 0.01 # 1%
 
+# DEVICES
 alias Slider d0 # optional
 alias FlickerLamp d1 # optional
-# Setting devices
-brdns Slider 2
-s Slider Lock 1
-s db Open 0
 
-# registers
+# REGISTERS
 alias warningOn r15
 alias oldState r14
 alias filterEnable r13
-alias gasTemp r12
+alias maxGasTemp r12
+alias typeGas r11
 
-# Once
-add gasTemp MinTempForFiltration 273.15
+Start:
+move typeGas 0
+s db Mode 1 # enable for one tick
+yield
+# Check Gas Output
+l r0 db RatioCarbonDioxideOutput
+breqz r0 2 # if r1 == 0 then +3 line
+move typeGas 1 # Co2
+l r0 db RatioNitrogenOutput
+breqz r0 2 # if r1 == 0 then +3 line
+move typeGas 2 # N2
+l r0 db RatioOxygenOutput
+breqz r0 2 # if r1 == 0 then +3 line
+move typeGas 3 # O2
+l r0 db RatioVolatilesOutput
+breqz r0 2 # if r1 == 0 then +3 line
+move typeGas 4 # H2
+l r0 db RatioNitrousOxideOutput
+breqz r0 2 # if r1 == 0 then +3 line
+move typeGas 5
+l r0 db RatioPollutantOutput
+breqz r0 2 # if r1 == 0 then +3 line
+move typeGas 6
+beqz typeGas Start
+# contune
+s db Open 0
+add maxGasTemp MinTempForFiltration 273.15
+# Setting devices
+brdns Slider 2
+s Slider Lock 1
 
 Main:
 yield
@@ -32,63 +59,41 @@ s Slider On r1 # enable/disable
 seqz warningOn r0 # 1 if x == 0
 
 # tank control
-# GasTank.Pressure < MaxPresInGasTank
+move filterEnable 0
+# exit if GasTank.Pressure > MaxPresInGasTank
 l r0 db PressureOutput
-slt r0 r0 MaxPresInGasTank # <
+bgt r0 MaxPresInGasTank SetFilter
 
-# DirtyTank.Temp < gasTemp
-l r1 db TemperatureInput
-slt r1 r1 gasTemp # <
-add r0 r0 r1
+# exit if DirtyTank.Temp > maxGasTemp
+l r0 db TemperatureInput
+bgt r0 maxGasTemp SetFilter
 
-# 1 if warningOn == false
-select r1 warningOn 0 1
-add r0 r0 r1
+# exit if warningOn != 0
+bnez warningOn SetFilter
 
 # if pressNotZero
-jal CheckGas
-snez r1 r1 # 1 if r1 != 0
-add r0 r0 r1
-# checking
-seq filterEnable r0 4
+jal GetGasRatio
+sgt filterEnable r0 kMinRatioForFiltration
+SetFilter:
 s db Mode filterEnable
 
 bdseal FlickerLamp Warning
 j Main
 
-CheckGas:
-# NOT USE REGISTER r0
-l r1 db RatioPollutantOutput
-breqz r1 3 # if r1 == 0 then +3 line
-l r1 db RatioPollutantInput
-j ra
-
-l r1 db RatioCarbonDioxideOutput
-breqz r1 3 # if r1 == 0 then +3 line
-l r1 db RatioCarbonDioxideInput
-j ra
-
-l r1 db RatioNitrogenOutput
-breqz r1 3 # if r1 == 0 then +3 line
-l r1 db RatioNitrogenInput
-j ra
-
-l r1 db RatioNitrousOxideOutput
-breqz r1 3 # if r1 == 0 then +3 line
-l r1 db RatioNitrousOxideInput
-j ra
-
-l r1 db RatioOxygenOutput
-breqz r1 3 # if r1 == 0 then +3 line
-l r1 db RatioOxygenInput
-j ra
-
-l r1 db RatioVolatilesOutput
-breqz r1 3 # if r1 == 0 then +3 line
-l r1 db RatioVolatilesInput
-j ra
-# if tank empty
-move r1 0
+GetGasRatio:
+move r0 0
+brne typeGas 1 2
+l r0 db RatioCarbonDioxideInput
+brne typeGas 2 2
+l r0 db RatioNitrogenInput
+brne typeGas 3 2
+l r0 db RatioOxygenInput
+brne typeGas 4 2
+l r0 db RatioVolatilesInput
+brne typeGas 5 2
+l r0 db RatioNitrousOxideInput
+brne typeGas 6 2
+l r0 db RatioPollutantInput
 j ra
 
 Warning:
