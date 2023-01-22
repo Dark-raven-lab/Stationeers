@@ -16,7 +16,7 @@ alias speedOut r9
 alias hotSupply r8
 alias hotDrop r7
 alias pressureWasHigh r6
-s RegIngot Mode 10
+s RegIngot Mode 17
 Stop:
 yield
 s Button Open 0
@@ -30,21 +30,15 @@ s PumpCool On 0
 s PumpHot On 0
 main:
 yield
-l Ingot RegIngot Setting
-move sp 0               # MinT.MinP.MaxT.MaxP
-push 000000000250000000 # Empty
-push 090001000500002000 #=900.1000.5000.2000 Steel
-push 060000800250002400 #=600.800.2500.2400 Electrum
-push 120018000150020000 #=1200.18000.1500.20000 Invar
-push 100020000250030000 #=1000.20000.2500.25000 Constantan
-push 035001000055001000 #=350.1000.550.1000 Solder
-push 100030000250040000 #=1000.30000.2500.40000 Astroloy
-push 095025000100030000 #=950.25000.1000.30000 Hastelloy
-push 060023500250024000 #=600.23500.2500.24000 Inconel
-push 040050000080055000 #=400.50000.800.55000 Waspaloy
-push 180010000250020000 #=1800.10000.2500.20000 Stellite
-add sp Ingot 1
-pop r0
+# read ingot hash
+l r0 RegIngot Setting
+mul r0 r0 2 # * 2
+move sp r0
+add sp sp 2 # +2
+pop r0 # SETTINGS
+peek Ingot
+s db Setting Ingot
+# parsing press and temp
 mod maxPressure r0 100000
 div r0 r0 100000
 floor r0 r0
@@ -54,21 +48,7 @@ floor r0 r0
 mod minPressure r0 100000
 div r0 r0 100000
 floor minTemperature r0
-move sp 0
-push 0
-push -654790771     # 1 = Steel
-push 502280180      # 2 = Electrum
-push -297990285     # 3 = Invar
-push 1058547521     # 4 = Constantan
-push -82508479      # 5 = Solder
-push 412924554      # 6 = Astroloy
-push 1579842814     # 7 = Hastelloy
-push -787796599     # 8 = Inconel
-push 156348098      # 9 = Waspaloy
-push -1897868623    # 10 = Stellite
-add sp Ingot 1      # Set number
-pop Ingot           # read for number
-s db Setting Ingot
+# end pars
 l r0 Button Setting # read start
 beq r0 0 main # wating for job
 sb 1944485013 On 1
