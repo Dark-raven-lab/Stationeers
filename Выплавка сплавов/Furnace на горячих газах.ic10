@@ -1,5 +1,5 @@
 define TEMPDROPHOTGAS 1273 # Kelvin
-define MAXOUTPUTPOMP 30
+define MAXOUTPUTPOMP 50
 alias RegIngot d0
 alias Button d1
 alias PumpHot d2
