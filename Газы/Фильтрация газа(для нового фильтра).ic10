@@ -1,10 +1,10 @@
-define MaxPresInGasTank 15000 # pA
-define MinTempForFiltration 130 # C
-define kMinRatioForFiltration 0.01 # 1%
+define kMaxPresInGasTank 15000 # kpA
+define kMaxTemp 130 # C
+define kMinRatio 0.01 # 1%
 
 # DEVICES
 alias Slider d0 # optional
-alias FlickerLamp d1 # optional
+alias WarningLamp d1 # optional
 
 # REGISTERS
 alias warningOn r15
@@ -39,7 +39,7 @@ move typeGas 6
 beqz typeGas Start
 # contune
 s db Open 0
-add maxGasTemp MinTempForFiltration 273.15
+add maxGasTemp kMaxTemp 273.15
 # Setting devices
 brdns Slider 2
 s Slider Lock 1
@@ -47,37 +47,47 @@ s Slider Lock 1
 Main:
 yield
 # check filters
+ls r0 db 0 Occupied
+ls r1 db 1 Occupied
+add r2 r0 r1
+max r2 r2 1 
 ls r0 db 0 Quantity
 ls r1 db 1 Quantity
 add r0 r0 r1 # summ, 0-200
-div r0 r0 2 # x / 2
+div r0 r0 r2 # x / count filters
 mul r0 r0 0.01 # x * 0.01
-slt r1 r0 0.5 # 1 if x < 0.5
+slt r1 r0 0.2 # 1 if x < 20%
+SetSlider:
 brdns Slider 3 # skip if not connected
 s Slider Setting r0 # precent
 s Slider On r1 # enable/disable
 seqz warningOn r0 # 1 if x == 0
 
 # tank control
-move filterEnable 0
-# exit if GasTank.Pressure > MaxPresInGasTank
+# 0 if GasTank.Pressure > kMaxPresInGasTank
 l r0 db PressureOutput
-bgt r0 MaxPresInGasTank SetFilter
+slt filterEnable r0 kMaxPresInGasTank
+beqz filterEnable SetFilter
 
-# exit if DirtyTank.Temp > maxGasTemp
+# 1 warningOn == 0
+seqz filterEnable warningOn 
+beqz filterEnable SetFilter
+
+# 0 if DirtyTank.Temp > maxGasTemp
 l r0 db TemperatureInput
-bgt r0 maxGasTemp SetFilter
-
-# exit if warningOn != 0
-bnez warningOn SetFilter
+slt filterEnable r0 maxGasTemp
+beqz filterEnable SetFilter
 
 # if pressNotZero
 jal GetGasRatio
-sgt filterEnable r0 kMinRatioForFiltration
+l filterEnable db Mode
+select r1 filterEnable 0 kMinRatio
+sgt filterEnable r0 r1
 SetFilter:
 s db Mode filterEnable
+#s db Setting r0
 
-bdseal FlickerLamp Warning
+bdseal WarningLamp Warning
 j Main
 
 GetGasRatio:
@@ -100,7 +110,7 @@ Warning:
 # if (warningOn == 1) { Flicker On }
 breqz warningOn 4 # exit if warningOn == 0
 move oldState 1
-s FlickerLamp On 1
+s WarningLamp On 1
 j ra
 # else if (warningOn == 0 && oldState == 1)
 # { Flicker Off; oldState = warningOn }
@@ -109,5 +119,5 @@ seq r1 oldState 1 # oldState == 1
 and r0 r0 r1 # r0 = 1 && r1 == 1
 beqz r0 ra # exit if r0 == 0
 move oldState 0
-s FlickerLamp On 0
+s WarningLamp On 0
 j ra
