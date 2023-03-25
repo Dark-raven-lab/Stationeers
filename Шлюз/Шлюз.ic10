@@ -1,4 +1,8 @@
-define AccuracyPressure 10
+define kAccuracyPressure 10
+
+define kSLIDER 576516101
+define kALARMLAMP -1535893860
+define kVOICE -828056979
 
 alias DoorInt d0
 alias VentInt d1
@@ -8,112 +12,111 @@ alias VentExt d4
 alias Lamp d5
 alias PressInt r15
 alias PressExt r14
-alias CurPress r13
-alias PressOut r12
-alias autoMode r11
+alias curPress r13
+alias pressOut r12
 Init:
-s DoorExt Open 0
-s DoorInt Open 0
-s DoorInt On 1
-s DoorExt On 1
+sb kSLIDER Lock 0
+sb kSLIDER On 0
 s DoorInt Setting 0
 s DoorExt Setting 0
+l r0 DoorInt Open
+select r1 r0 0 1
+s DoorInt On r1
+s DoorExt On r0
+s DoorExt Open r1
 s DoorInt Lock 0
 s DoorExt Lock 0
 move PressInt 0
 move PressExt 0
-move autoMode 1
 Main:
 yield
-lb r0 576516101 On Maximum
+lb r0 kSLIDER On Maximum
 seqz r0 r0 # 1 if == 0
 s DoorInt Mode r0
 s DoorExt Mode r0
 bgtz r0 CheckDoor
 s DoorInt On 1
 s DoorExt On 1
-move autoMode 0
 j Main
-
 CheckDoor:
-beqz autoMode Init
 l r1 DoorInt Setting
 l r0 DoorExt Setting
 beq r1 1 GoInt # if Open
 beq r0 1 GoExt # if Open
 j Main
-
 GoInt:
 l PressInt Gas Pressure # Save cur pressure
-move PressOut PressExt
-alias DoorIn d3
-alias DoorOut d0
-alias VentIn d4
-alias VentOut d1
+move pressOut PressExt
+alias DoorBack d3
+alias DoorFront d0
+alias VentBack d4
+alias VentFront d1
 j Start
 GoExt:
 l PressExt Gas Pressure # Save cur pressure
-move PressOut PressInt
-alias DoorIn d0
-alias DoorOut d3
-alias VentIn d1
-alias VentOut d4
-j Start
+move pressOut PressInt
+alias DoorBack d0
+alias DoorFront d3
+alias VentBack d1
+alias VentFront d4
 Start:
+sb kVOICE On 1
+sb kVOICE Mode 9
+s DoorFront Setting 0
+sb kALARMLAMP On 1
 brdns Lamp 2 # enable lamp if connected
 s Lamp On 1
-s DoorIn On 1 # enable door in
-s DoorIn Open 0 # closed door in
-l r0 DoorIn Open # check status door in
-bnez r0 Start # if != closed retern
-s DoorIn Setting 0 # clear door in
-s DoorIn On 0 # disable door in
+sb kSLIDER On 1
+sb kSLIDER Lock 1
+CloseDoor:
+s DoorBack On 1 # enable door in
+s DoorBack Open 0 # closed door in
+sleep 1
+s DoorBack On 0 # disable door in
 StartDepressure:
-s DoorOut Setting 0
-s VentIn Lock 1
-s VentIn Mode 1 # set mode depressure
-s VentIn On 1 # START DEPRESSURE
-s VentOut Lock 1
-s VentOut On 0
-l r1 Gas Pressure # check pressure
+l r1 Gas Pressure
+s VentBack Lock 1
+s VentBack Mode 1 # set mode depressure
+s VentBack On 1 # START DEPRESSURE
+s VentFront Lock 1
+s VentFront On 0
+WaitDepressure:
 yield
-l r0 DoorOut Setting # check status door
-beq r0 1 StartPressure # If out want open-go next
-l CurPress Gas Pressure
-div r0 CurPress r1
-jal WriteLcd
-brnez CurPress -6 # if press != 0 retern
-StartPressure:
-s VentIn On 0 # STOP DEPRESSURE
-s VentOut Mode 0 # First!
-s VentOut PressureExternal PressOut
-s VentOut On 1
-s DoorOut On 1
-s DoorOut Setting 0
+l r0 DoorFront Setting # check skip stage
+bgtz r0 Pressurization # If out want open-go next
+l curPress Gas Pressure # check pressure
+div r0 curPress r1
+sb kSLIDER Setting r0
+bgtz curPress WaitDepressure # if press != 0 retern
+Pressurization:
+s VentBack On 0 # STOP DEPRESSURE
+s VentFront Mode 0 # First!
+s VentFront PressureExternal pressOut
+s VentFront On 1
+s DoorFront On 1
+WaitPressurization:
 yield
-l r0 DoorOut Setting # check status door
-beq r0 1 End # If door out was open - exit
-l CurPress Gas Pressure
-div r0 CurPress PressOut
-jal WriteLcd
-sub r0 PressOut CurPress
-brgt r0 AccuracyPressure -7
-End:
-s VentOut On 0
-s VentOut Lock 0
-s VentIn Lock 0
-s DoorOut Open 1
-yield
-sb 576516101 On 0
-sb 576516101 Lock 0
-s DoorOut Setting 0
-s DoorOut On 0
-s DoorIn On 1
-brdns Lamp 2 # disable lamp if connected
+l r0 DoorFront Setting # check skip stage
+bgtz r0 OpenDoor # If door out was open - exit
+l curPress Gas Pressure
+sub r1 pressOut kAccuracyPressure # Need pressure
+div r0 curPress r1
+sb kSLIDER Setting r0
+blt curPress r1 WaitPressurization
+OpenDoor:
+sb kVOICE Mode 25
+s VentFront On 0
+s VentFront Lock 0
+s VentBack Lock 0
+s DoorFront Open 1
+sb kSLIDER On 0
+sb kSLIDER Lock 0
+sb kALARMLAMP On 0
+sleep 1
+sb kVOICE On 0
+s DoorFront Setting 0
+s DoorFront On 0
+s DoorBack On 1
+bdns Lamp Main # disable lamp if connected
 s Lamp On 0
 j Main
-WriteLcd:
-sb 576516101 On 1
-sb 576516101 Lock 1
-sb 576516101 Setting r0
-j ra
