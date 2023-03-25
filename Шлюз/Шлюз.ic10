@@ -1,9 +1,7 @@
 define kAccuracyPressure 10
-
 define kSLIDER 576516101
 define kALARMLAMP -1535893860
 define kVOICE -828056979
-
 alias DoorInt d0
 alias VentInt d1
 alias Gas d2
@@ -26,8 +24,6 @@ s DoorExt On r0
 s DoorExt Open r1
 s DoorInt Lock 0
 s DoorExt Lock 0
-move PressInt 0
-move PressExt 0
 Main:
 yield
 lb r0 kSLIDER On Maximum
@@ -60,14 +56,8 @@ alias DoorFront d3
 alias VentBack d1
 alias VentFront d4
 Start:
-sb kVOICE On 1
+jal AirLook
 sb kVOICE Mode 9
-s DoorFront Setting 0
-sb kALARMLAMP On 1
-brdns Lamp 2 # enable lamp if connected
-s Lamp On 1
-sb kSLIDER On 1
-sb kSLIDER Lock 1
 CloseDoor:
 s DoorBack On 1 # enable door in
 s DoorBack Open 0 # closed door in
@@ -75,48 +65,47 @@ sleep 1
 s DoorBack On 0 # disable door in
 StartDepressure:
 l r1 Gas Pressure
-s VentBack Lock 1
 s VentBack Mode 1 # set mode depressure
-s VentBack On 1 # START DEPRESSURE
-s VentFront Lock 1
 s VentFront On 0
 WaitDepressure:
 yield
-l r0 DoorFront Setting # check skip stage
-bgtz r0 Pressurization # If out want open-go next
 l curPress Gas Pressure # check pressure
 div r0 curPress r1
 sb kSLIDER Setting r0
-bgtz curPress WaitDepressure # if press != 0 retern
+sgtz r0 curPress # enable if pressure > 0
+s VentBack On r0
+bgtz r0 WaitDepressure # if press != 0 retern
 Pressurization:
-s VentBack On 0 # STOP DEPRESSURE
 s VentFront Mode 0 # First!
 s VentFront PressureExternal pressOut
-s VentFront On 1
-s DoorFront On 1
 WaitPressurization:
 yield
-l r0 DoorFront Setting # check skip stage
-bgtz r0 OpenDoor # If door out was open - exit
 l curPress Gas Pressure
 sub r1 pressOut kAccuracyPressure # Need pressure
 div r0 curPress r1
 sb kSLIDER Setting r0
-blt curPress r1 WaitPressurization
+slt r0 curPress r1
+l r1 DoorFront Setting # check skip stage
+xor r0 r0 r1
+s VentFront On r0
+bgtz r0 WaitPressurization
 OpenDoor:
 sb kVOICE Mode 25
-s VentFront On 0
-s VentFront Lock 0
-s VentBack Lock 0
 s DoorFront Open 1
-sb kSLIDER On 0
-sb kSLIDER Lock 0
-sb kALARMLAMP On 0
 sleep 1
-sb kVOICE On 0
-s DoorFront Setting 0
 s DoorFront On 0
 s DoorBack On 1
-bdns Lamp Main # disable lamp if connected
-s Lamp On 0
-j Main
+yield
+AirLook:
+s DoorFront Setting 0
+l r0 DoorFront On
+sb kVOICE On r0
+sb kSLIDER On r0
+sb kSLIDER Lock r0
+sb kALARMLAMP On r0
+s VentBack Lock r0
+s VentFront Lock r0
+brdns Lamp 2
+s Lamp On r0
+select r0 r0 ra Main
+j r0
