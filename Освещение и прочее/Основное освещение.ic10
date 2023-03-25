@@ -1,55 +1,101 @@
 define lowerLimit 0.2
+define kDiffPressure 0.5 # dif one sec
 
-alias socketBattery d0
-alias solarSensor d1
+alias Battary d0
+alias Sensor d1
+alias SolarSensor d2
 
-define LAMPBAT -1306415132
 define LAMPLED 1944485013
 define LAMP1 -1860064656
 define LAMP2 797794350
-define LAMP3 1847265835
-define LAMP4 555215790
+define LAMP3 555215790
+define LAMP4 1847265835
+define LAMP5 1514476632
+define LAMP6 1592905386
+define LAMP7 1436121888
+define GASSENSOR -1252983604
+define HANGARDOORS 1736080881
+define HANGARDOORM -566348148
+define HANGARDOORL -1351081801
 
-define WHITE 6
+define kNormalLight 6
 define ORANGE 3
 define RED 4
 
-alias currentPrecent r15
-alias hasSun r14
+alias pressureOld r15
+alias isNight r14
 alias lampEnable r13
-alias warning r12
+alias lowPower r12
 alias lampColor r11
+alias doorClosed r10
 
-main:
+move lampColor kNormalLight
+move lowPower 0
+Main:
 yield
-l currentPrecent socketBattery Setting
+# --- Light battery
+bdns Battary SkipBattary
+l r0 Battary Setting
 # Color main lamp
-slt r0 currentPrecent lowerLimit
-select lampColor r0 ORANGE WHITE
+slt lowPower r0 lowerLimit
+select lampColor lowPower ORANGE kNormalLight
+SkipBattary:
 
-seq lampEnable warning 0
-slt warning currentPrecent 0.05
-beq warning 1 LampSet # ignore sun
+# --- Control Presence
+l r0 Sensor Activate
 
-# enable lamp if sun not light
-l hasSun solarSensor Activate
-seq lampEnable hasSun 0
-j LampSet
+bdns SolarSensor SkipSolarSensor
+l r1 SolarSensor Activate
+select isNight r1 0 1 # 1 if night
+and r0 isNight r0
+SkipSolarSensor:
+move lampEnable r0
 
-LampSet:
+SetPowerLight:
+select lampEnable lowPower 0 lampEnable
 sb LAMP1 On lampEnable
-#sb LAMP1 Color lampColor
+sb LAMP1 Color lampColor
 sb LAMP2 On lampEnable
-#sb LAMP2 Color lampColor
+sb LAMP2 Color lampColor
 sb LAMP3 On lampEnable
-#sb LAMP3 Color lampColor
+sb LAMP3 Color lampColor
 sb LAMP4 On lampEnable
-#sb LAMP4 Color lampColor
+sb LAMP4 Color lampColor
+sb LAMP5 On lampEnable
+#sb LAMP5 Color lampColor
+sb LAMP6 On lampEnable
+sb LAMP6 Color lampColor
+sb LAMP7 On lampEnable
+sb LAMP7 Color lampColor
 # smal lamp enable night
-nor r0 warning lampEnable
+select r0 lampEnable 0 1
 sb LAMPLED Color lampColor
 sb LAMPLED On r0
-# lamp battary
-sb LAMPBAT Color RED
-sb LAMPBAT On warning
-j main
+
+lb r0 GASSENSOR Combustion Maximum
+bgtz r0 SkipPressureControl
+
+lb r1 GASSENSOR Pressure Average
+sub r0 r1 pressureOld
+abs r0 r0
+s db Setting r0
+sge r0 r0 kDiffPressure
+move pressureOld r1
+SkipPressureControl:
+
+beqz r0 DontClosed
+bgtz doorClosed DontClosed
+sb HANGARDOORS On 1
+sb HANGARDOORM On 1
+sb HANGARDOORL On 1
+sb HANGARDOORS Open 0
+sb HANGARDOORM Open 0
+sb HANGARDOORL Open 0
+sleep 1
+sb HANGARDOORS On 0
+sb HANGARDOORM On 0
+sb HANGARDOORL On 0
+DontClosed:
+move doorClosed r0
+
+j Main
