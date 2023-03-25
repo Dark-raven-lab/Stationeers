@@ -1,0 +1,78 @@
+# 1 kontur
+define kTemp1 750
+define kPress1 10
+# 2 kontur
+define kTemp2 380
+define kPress2 5
+# 3 kontur
+define kTemp3 305
+define kPress3 5
+
+define kSleepSec 30
+
+# === END SETTINGS ===
+
+alias Sensor1 d0
+alias Sensor2 d1
+alias Sensor3 d2
+alias PressReg1 d3
+alias PressReg2 d4
+alias PressReg3 d5
+
+alias stage r15
+alias tempMax r14
+alias pressMax r13
+alias count r12
+
+Start:
+s PressReg1 Setting 0
+brdns PressReg2 2
+s PressReg2 Setting 0
+brdns PressReg3 2
+s PressReg3 Setting 0
+
+Main:
+yield
+move count 0
+
+K1:
+alias Sensor d0
+alias PressReg d3
+move tempMax kTemp1
+move pressMax kPress1
+jal Control
+
+K2:
+bdns Sensor2 K3
+alias Sensor d1
+alias PressReg d4
+move tempMax kTemp2
+move pressMax kPress2
+jal Control
+
+K3:
+bdns Sensor3 Main
+alias Sensor d2
+alias PressReg d5
+move tempMax kTemp3
+move pressMax kPress3
+jal Control
+
+s db Setting count
+brgtz count 2
+sleep kSleepSec
+j Main
+
+Control:
+s Sensor On 1
+yield
+l r0 Sensor Pressure
+sgt r1 r0 pressMax # 1 if pressure OK
+l r0 Sensor Temperature
+slt r0 r0 tempMax # 1 if temp OK
+Set:
+and r0 r0 r1
+s PressReg On r0
+s Sensor On r1
+add count count r1
+j ra
