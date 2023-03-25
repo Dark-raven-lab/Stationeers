@@ -12,10 +12,9 @@ alias minTemperature r13
 alias maxTemperature r12
 alias Ingot r11
 alias speedIn r10
-alias speedOut r9
-alias hotSupply r8
-alias hotDrop r7
-alias pressureWasHigh r6
+alias hotSupply r9
+alias hotDrop r8
+alias pressureWasHigh r7
 s RegIngot Mode 17
 Stop:
 yield
@@ -28,6 +27,7 @@ s PumpHotOut On 0
 s PumpWaste On 0
 s PumpCool On 0
 s PumpHot On 0
+move pressureWasHigh 0
 main:
 yield
 # read ingot hash
@@ -79,14 +79,17 @@ s PumpHotOut On hotDrop
 and r0 pressureWasHigh r0 # enable if high press and temp not is good
 s PumpWaste On r0
 or r0 hotDrop r0
-brge speedOut MAXOUTPUTPOMP 2   # jump if >=
-add speedOut speedOut 2         # ++
-select speedOut r0 speedOut 0   # 0 if wating
-sb 545937711 SettingOutput speedOut
+lb r6 545937711 SettingOutput Maximum
+brge r6 MAXOUTPUTPOMP 2   # jump if >=
+add r6 r6 2         # ++
+select r6 r0 r6 0   # 0 if wating
+sb 545937711 SettingOutput r6
 select r0 r0 100 0
 s PumpHotOut Setting r0
 s PumpWaste Setting r0
 or hotSupply r1 r3 # enable if low press or low temp
+l r6 PumpWaste On
+select hotSupply r6 0 hotSupply
 s PumpHot On hotSupply
 select r0 pressureWasHigh 0 1 # COOLING
 and r5 r0 r4 # enable if pressure < max and high temp
