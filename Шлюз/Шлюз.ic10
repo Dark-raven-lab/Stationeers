@@ -12,6 +12,7 @@ alias PressInt r15
 alias PressExt r14
 alias curPress r13
 alias pressOut r12
+alias skipAirLook r11
 Init:
 sb kSLIDER Lock 0
 sb kSLIDER On 0
@@ -24,19 +25,13 @@ s DoorExt On r0
 s DoorExt Open r1
 s DoorInt Lock 0
 s DoorExt Lock 0
+s DoorInt Mode 1
+s DoorExt Mode 1
 Main:
 yield
-lb r0 kSLIDER On Maximum
-seqz r0 r0 # 1 if == 0
-s DoorInt Mode r0
-s DoorExt Mode r0
-bgtz r0 CheckDoor
-s DoorInt On 1
-s DoorExt On 1
-j Main
-CheckDoor:
 l r1 DoorInt Setting
 l r0 DoorExt Setting
+lb skipAirLook kSLIDER On Maximum
 beq r1 1 GoInt # if Open
 beq r0 1 GoExt # if Open
 j Main
@@ -47,7 +42,7 @@ alias DoorBack d3
 alias DoorFront d0
 alias VentBack d4
 alias VentFront d1
-j Start
+j AirLook
 GoExt:
 l PressExt Gas Pressure # Save cur pressure
 move pressOut PressInt
@@ -55,14 +50,26 @@ alias DoorBack d0
 alias DoorFront d3
 alias VentBack d1
 alias VentFront d4
-Start:
-jal AirLook
+AirLook:
+s DoorFront Setting 0
+bgtz skipAirLook CloseDoor
+l r0 DoorFront On
+sb kVOICE On r0
+sb kALARMLAMP On r0
+sb kSLIDER On r0
+sb kSLIDER Lock r0
+s VentBack Lock r0
+s VentFront Lock r0
+brdns Lamp 2
+s Lamp On r0
+beqz r0 Main
 sb kVOICE Mode 9
 CloseDoor:
 s DoorBack On 1 # enable door in
 s DoorBack Open 0 # closed door in
-sleep 1
+sleep 0.5
 s DoorBack On 0 # disable door in
+bgtz skipAirLook OpenDoor
 StartDepressure:
 l r1 Gas Pressure
 s VentBack Mode 1 # set mode depressure
@@ -89,23 +96,13 @@ l r1 DoorFront Setting # check skip stage
 xor r0 r0 r1
 s VentFront On r0
 bgtz r0 WaitPressurization
-OpenDoor:
 sb kVOICE Mode 25
+OpenDoor:
 s DoorFront Open 1
 sleep 1
 s DoorFront On 0
 s DoorBack On 1
-yield
-AirLook:
 s DoorFront Setting 0
-l r0 DoorFront On
-sb kVOICE On r0
-sb kSLIDER On r0
-sb kSLIDER Lock r0
-sb kALARMLAMP On r0
-s VentBack Lock r0
-s VentFront Lock r0
-brdns Lamp 2
-s Lamp On r0
-select r0 r0 ra Main
-j r0
+bgtz skipAirLook Main
+yield
+j AirLook
