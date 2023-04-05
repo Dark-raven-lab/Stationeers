@@ -1,0 +1,127 @@
+alias LMStorageExternal d0
+alias LMStorageInternal d1
+alias LMStorageResponse d2
+alias Stacker d3
+alias Sorter d4
+alias LMRouterCom d5
+alias ClientCount r2
+alias BC r4 #TimeoutCounter r3
+alias Bvalue r6
+alias Cvalue r7
+alias ComValue r8
+alias Stage r9
+alias AvailableQ r10
+alias RequestedHash r11
+alias RequestQua r12
+alias RequestAdr r13
+alias StackerRQ r14
+alias SorterRQ r15
+s Sorter Mode 2
+Start:
+yield
+add r3 r3 0.5
+seqz BC BC
+breqz BC 20 #ToB+1
+ls r0 Stacker 1 OccupantHash
+brne r0 RequestedHash 3 #ToA
+ls r0 Stacker 1 Quantity
+sub StackerRQ StackerRQ r0
+ls r0 Sorter 1 OccupantHash #A
+brnez r0 14 #ToB+1
+ls r0 Sorter 0 OccupantHash
+breqz r0 12 #ToB+1
+brne r0 RequestedHash 10 #ToB
+ls Bvalue Sorter 0 Quantity
+brgt Bvalue SorterRQ 8 #ToB
+sub SorterRQ SorterRQ Bvalue
+s Sorter Output 0
+brdns LMRouterCom 4
+move Cvalue RequestAdr
+jal Compress
+push ComValue
+jr 2
+s Sorter Output 1 #B
+select r0 StackerRQ StackerRQ 1000
+s Stacker Setting r0
+bgtzal sp ReportToRouter
+ble r3 Stage Stage
+move StackerRQ 0
+move SorterRQ 0
+s LMStorageResponse Setting 0
+s LMStorageInternal Setting 900
+jr 3
+ClearInternal:
+s LMStorageInternal Setting 0
+WaitForComunication:
+move Stage WaitForComunication
+bnez StackerRQ Start
+bnez SorterRQ Start
+move r3 30
+s Stacker Activate 1
+l r0 LMStorageInternal Setting
+brne r0 900 4
+sleep 2
+l ClientCount LMStorageResponse Setting
+s LMStorageInternal Setting 0
+bnez r0 Start
+l ComValue LMStorageExternal Setting
+jal Decompress
+beqz ComValue Start
+beq RequestAdr 99 Start
+move Bvalue 2
+move Cvalue 0
+jal Compress
+s LMStorageInternal Setting ComValue
+s LMStorageResponse Setting 0
+WaitForCount:
+move Stage WaitForCount
+l r0 LMStorageResponse Setting
+mod r1 r0 100
+bne ClientCount r1 Start
+div r1 r0 100
+trunc AvailableQ r1
+min RequestQua AvailableQ RequestQua
+select ComValue RequestAdr RequestQua AvailableQ
+mul ComValue ComValue 100000
+add ComValue ComValue 99
+s LMStorageExternal Setting ComValue
+beqz RequestAdr ClearInternal
+blez RequestQua ClearInternal
+move StackerRQ RequestQua
+move SorterRQ RequestQua
+move Bvalue 3
+move Cvalue 0
+jal Compress
+s LMStorageInternal Setting ComValue
+s LMStorageResponse Setting 0
+WaitForEject:
+move Stage WaitForEject
+l r0 LMStorageResponse Setting
+blt r0 RequestQua Start
+j ClearInternal
+Compress:
+abs r1 RequestedHash
+mul ComValue r1 100000
+add ComValue ComValue Cvalue
+mul r1 Bvalue 100
+add ComValue ComValue r1
+bgez RequestedHash ra
+mul ComValue ComValue -1
+j ra
+Decompress:
+abs r1 ComValue
+mod RequestAdr r1 100
+sub r1 r1 RequestAdr
+mod RequestQua r1 100000
+sub RequestedHash r1 RequestQua
+div RequestQua RequestQua 100
+div RequestedHash RequestedHash 100000
+bgtz ComValue ra
+mul RequestedHash RequestedHash -1
+j ra
+ReportToRouter:
+l r0 LMRouterCom Setting
+bnez r0 ra
+pop r0
+s LMRouterCom Setting r0
+j ra

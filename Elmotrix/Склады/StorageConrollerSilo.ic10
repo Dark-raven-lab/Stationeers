@@ -1,0 +1,96 @@
+alias LMStorageInternal d0
+alias Sorter d1
+alias StorageUnit d2
+alias LMStorageResponse d3
+define MaxFillLimit 500
+alias EjectFlag r4 #ComMem r3
+alias Avalue r5
+alias Bvalue r6
+alias Cvalue r7
+alias ComValue r8
+alias MaxStack r10
+alias ID r11
+alias ReportValue r13
+alias AllowedHash r14
+s Sorter Mode 2
+l r0 LMStorageInternal Setting
+brnez r0 -1
+brnez ID 5
+s LMStorageInternal Setting 100
+yield
+l ID LMStorageInternal Setting
+sub ID ID 99
+s LMStorageResponse Setting 0
+s LMStorageInternal Setting 900
+Start:
+s db Setting ID
+ls Avalue Sorter 0 OccupantHash
+beqz Avalue ComStart
+seq r0 AllowedHash Avalue
+breqz r0 2
+ls MaxStack Sorter 0 MaxQuantity
+l r1 StorageUnit Quantity
+slt r1 r1 MaxFillLimit
+and r0 r0 r1
+s Sorter Output r0
+ComStart:
+move r3 ComValue
+yield
+l ComValue LMStorageInternal Setting
+jal Decompress
+brne Bvalue 3 2
+s StorageUnit Open 0
+move ReportValue 1
+beq Bvalue 1 MaxID
+breq Cvalue ID 2
+bnez Cvalue Start #MessageIsForME:
+beq Bvalue 3 EjectItem
+beq ComValue r3 Start
+beq Bvalue 9 Report
+beq Bvalue 2 CountItem
+bne Cvalue ID Start
+brne Bvalue 4 2
+move AllowedHash Avalue
+s LMStorageInternal Setting 0
+j Start
+MaxID:
+bgt Cvalue ID Start
+add r0 ID 100
+s LMStorageInternal Setting r0
+j Start
+EjectItem:
+bne Avalue AllowedHash Start
+seqz r0 EjectFlag
+s StorageUnit Open r0
+add EjectFlag EjectFlag 1
+brlt EjectFlag 5 3 #Edit this number (not the 3)
+move EjectFlag 0
+j Start
+bne EjectFlag 2 Start
+ls ReportValue StorageUnit 1 Quantity
+ls r1 StorageUnit 1 OccupantHash
+bne r1 Avalue Start
+j Report
+CountItem:
+move EjectFlag 0
+bne Avalue AllowedHash Report
+l r2 StorageUnit Quantity
+mul r2 MaxStack r2
+mul r2 r2 100
+add ReportValue ReportValue r2
+Report:
+l r0 LMStorageResponse Setting
+add ReportValue ReportValue r0
+s LMStorageResponse Setting ReportValue
+j Start
+Decompress:
+abs r1 ComValue
+mod Cvalue r1 100
+sub r1 r1 Cvalue
+mod Bvalue r1 100000
+sub Avalue r1 Bvalue
+div Bvalue Bvalue 100
+div Avalue Avalue 100000
+bgtz ComValue ra
+mul Avalue Avalue -1
+j ra

@@ -1,0 +1,127 @@
+alias LMStorageInternal d0
+alias Sorter d1
+alias StorageUnit d2
+alias LMStorageResponse d3
+define MaxFillLimit 90
+alias EjectFlag r4 #ComMem r3
+alias Avalue r5
+alias Bvalue r6
+alias Cvalue r7
+alias ComValue r8
+alias StackPointerMax r9
+alias IsOnList r10
+alias ID r11
+alias ReportValue r13
+alias IsWhitelist r14
+s Sorter Mode 2
+l r0 LMStorageInternal Setting
+brnez r0 -1
+brnez ID 5
+s LMStorageInternal Setting 100
+sleep 2
+l ID LMStorageInternal Setting
+sub ID ID 99
+s LMStorageResponse Setting 0
+s LMStorageInternal Setting 900
+Start:
+s db Setting ID
+ls Avalue Sorter 0 OccupantHash
+beqz Avalue ComStart
+jal IsOnListCheck
+brgtz IsOnList 3
+ls Avalue Sorter 0 Class
+jal IsOnListCheck
+seq r0 IsOnList IsWhitelist
+l r1 StorageUnit Quantity
+slt r1 r1 MaxFillLimit
+and r0 r0 r1
+s Sorter Output r0
+ComStart:
+move r3 ComValue
+yield
+l ComValue LMStorageInternal Setting
+jal Decompress
+move ReportValue 1
+beq Bvalue 1 MaxID
+breq Cvalue ID 2
+bnez Cvalue Start #MessageIsForME:
+beq Bvalue 3 EjectItem
+beq ComValue r3 Start
+beq Bvalue 9 Report
+beq Bvalue 2 CountItem
+bne Cvalue ID Start
+bgeal Bvalue 4 IsOnListCheck
+beqal Bvalue 4 AddToList
+beqal Bvalue 5 DeleteFromList
+brne Bvalue 6 2 #ClearList
+move StackPointerMax 0
+breq Bvalue 7 2 #SetWhitelist
+brne Bvalue 8 2 #SetBlacklist
+sub IsWhitelist 8 Bvalue
+s LMStorageInternal Setting 0
+j Start
+MaxID:
+bgt Cvalue ID Start
+add r0 ID 100
+s LMStorageInternal Setting r0
+j Start
+EjectItem:
+brle EjectFlag 2 6
+ls r1 StorageUnit 1 Occupied
+bgtz r1 Start
+s StorageUnit RequestHash Avalue
+move EjectFlag 0
+j Start
+add EjectFlag EjectFlag 1
+ls ReportValue StorageUnit 1 Quantity
+ls r1 StorageUnit 1 OccupantHash
+bne r1 Avalue Start
+j Report
+CountItem:
+move r1 1
+add r1 r1 1
+ls r2 StorageUnit r1 OccupantHash
+brne r2 Avalue 4
+ls r2 StorageUnit r1 Quantity
+mul r2 r2 100
+add ReportValue ReportValue r2
+brle r1 100 -6
+Report:
+l r0 LMStorageResponse Setting
+add ReportValue ReportValue r0
+s LMStorageResponse Setting ReportValue
+j Start
+Decompress:
+abs r1 ComValue
+mod Cvalue r1 100
+sub r1 r1 Cvalue
+mod Bvalue r1 100000
+sub Avalue r1 Bvalue
+div Bvalue Bvalue 100
+div Avalue Avalue 100000
+bgtz ComValue ra
+mul Avalue Avalue -1
+j ra
+AddToList:
+bnez IsOnList ra
+move sp StackPointerMax
+push Avalue
+move StackPointerMax sp
+j ra
+DeleteFromList:
+beqz IsOnList ra
+sub StackPointerMax StackPointerMax 1
+bge sp StackPointerMax ra
+add sp sp 2
+pop r1
+sub sp sp 1
+push r1
+jr -5
+IsOnListCheck:
+move IsOnList 0
+move sp StackPointerMax
+beqz sp ra
+pop r1
+brne r1 Avalue -2
+move IsOnList 1
+j ra
