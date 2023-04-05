@@ -95,9 +95,12 @@ l curPress Gas Pressure # check pressure
 div r0 curPress r1
 sb kSLIDER Setting r0
 sgtz r0 curPress # enable if pressure > 0
+l r1 DoorFront Setting # check skip stage
+xor r0 r0 r1
 s VentBack On r0
 bgtz r0 WaitDepressure # if press != 0 retern
 Pressurization:
+s DoorFront Setting 0
 s VentFront Mode 0 # First!
 s VentFront PressureExternal pressOut
 WaitPressurization:
