@@ -1,5 +1,5 @@
 define kMiPressFiltrationO2 30  # kPa
-define kMaxTemp 30              # C
+define kMaxTemp 45              # C
 define kMaxPressure 101         # kPa
 define kRatioCo2 0.1            # 0-1
 define kRatioO2 0.5             # 0-1
@@ -11,34 +11,43 @@ alias Slider d1
 alias press r15
 alias temp r14
 alias lightState r13
+# More Devices
+define kAlarmLamp -1535893860
 
+l r0 Filter Open
 Start:
-s PumpCo2 Lock 1
-s Filter Lock 1
+s Filter Mode r0
+select r0 r0 0 1
+s PumpCo2 Lock r0
+s PumpCo2 On r0
 brdns Slider 2
-s Slider Lock 1
-s Filter Open 0
+s Slider Lock r0
 Main:
 yield
-CheckFilters:
 bdns Slider WarningExit # skip if not connected
+ls r0 db 0 Occupied
+ls r1 db 1 Occupied
+add r2 r0 r1
+max r2 r2 1 
 ls r0 db 0 Quantity
 ls r1 db 1 Quantity
 add r0 r0 r1 # summ, 0-200
-div r0 r0 2 # x / 2
+div r0 r0 r2 # x / count filters
 mul r0 r0 0.01 # x * 0.01
-slt r1 r0 0.3 # 1 if x < 0.3
+slt r1 r0 0.2 # 1 if x < 20%
 s Slider Setting r0 # precent
 s Slider On r1 # enable/disable
 # warning
 brnez r0 4 # exit if r0 == 0
 move lightState 1
-sb -1535893860 On 1
+sb kAlarmLamp On 1
 j WarningExit
 beqz lightState WarningExit # exit if r0 == 0
 move lightState 0
-sb -1535893860 On 0
+sb kAlarmLamp On 0
 WarningExit:
+l r0 Filter Open
+beq r0 1 Start
 
 OxygenControl:
 l press Filter PressureInput
@@ -47,6 +56,9 @@ l r2 Filter RatioOxygenInput
 sgt r1 press kMiPressFiltrationO2
 sgt r2 r2 kRatioO2
 and r0 r1 r2
+l r1 Filter PressureOutput
+slt r1 r1 45000
+and r0 r0 r1
 # Set power
 s Filter Mode r0
 
