@@ -1,4 +1,5 @@
-define kEnableLampControl 1
+define kEnableLampControl 0
+define kDisableForWait 1
 
 alias Harvi1 d0
 alias Harvi2 d1
@@ -8,10 +9,12 @@ alias Ferm2 d4
 alias Ferm3 d5
 
 alias count r15
+alias enabled r14
 
 Main:
 yield
 move count 0
+move enabled 0
 
 One:
 bdns Harvi1 Two
@@ -37,7 +40,7 @@ jal ChechFerm
 s db Setting count
 
 LightControl:
-beqz kEnableLampControl Main # disabled
+beqz kEnableLampControl SkipLightControl # disabled
 lb r0 1076425094 PrefabHash Minimum
 beqz r0 Main # not found solar sensor
 
@@ -46,22 +49,31 @@ seqz r1 r1 # 1 if night
 sgtz r2 count # 1 if growth
 and r0 r1 r2
 sb -1758710260 On r0
+SkipLightControl:
 
+beqz kDisableForWait Main
+s db On enabled
 j Main
 
 ChechFerm:
-l r0 Harvi Activate # 1 = Seeding or Mature
-bgtz r0 ra # Wait if work is being done
+l enabled Harvi Activate # 1 = Seeding or Mature
+bgtz enabled ra # Wait if work is being done
 
 ls r0 Ferm 0 Occupied
 bgtz r0 GrowthCheck
 
 CheckPlant:
+l enabled Harvi Activate # 1 = Seeding or Mature
+bgtz enabled ra # Wait if work is being done
+s Harvi On 1
+yield
 ls r0 Harvi 0 Occupied
-ls r1 Harvi 2 Occupied
-or r0 r0 r1
+#ls r1 Harvi 2 Occupied
+#or r0 r0 r1
 s Harvi On r0
+beqz r0 ra
 s Harvi Plant r0
+move enabled 1
 j ra
 
 GrowthCheck:
@@ -75,5 +87,7 @@ sgtz r2 r2
 and r0 r1 r2
 PowerHarvi:
 s Harvi On r0
+beqz r0 ra
+move enabled 1
 s Harvi Harvest r0
 j ra

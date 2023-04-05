@@ -1,0 +1,25 @@
+define kTime 10
+
+alias IC1 d0
+alias IC2 d1
+alias IC3 d2
+alias IC4 d3
+alias IC5 d4
+alias IC6 d5
+
+Main:
+yield
+sleep kTime
+s IC1 On 1
+yield
+s IC2 On 1
+yield
+s IC3 On 1
+yield
+s IC4 On 1
+yield
+s IC5 On 1
+yield
+s IC6 On 1
+yield
+j Main
