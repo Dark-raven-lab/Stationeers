@@ -73,6 +73,7 @@ move Cvalue 0
 jal Compress
 s LMStorageInternal Setting ComValue
 s LMStorageResponse Setting 0
+#sb -128473777 On 1
 WaitForCount:
 move Stage WaitForCount
 l r0 LMStorageResponse Setting
