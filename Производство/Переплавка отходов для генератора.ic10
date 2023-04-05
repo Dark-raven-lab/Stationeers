@@ -1,7 +1,7 @@
 define kCountRecycler 50
 define kCountCentrifuge 10
 
-alias ArcFurnace d0
+alias ArcSlotReader d0
 alias ActVent d1
 alias GasSensor d2
 alias Recycler d3
@@ -10,14 +10,16 @@ alias Centrifuge d4
 alias firnaceImport r15
 alias recyclerReagents r14
 
+define kArcFurnace -247344692
+
 Once:
 s ActVent Mode 1
 s ActVent Lock 1
 
 Main:
 yield
-ls firnaceImport ArcFurnace 0 Occupied
-s ArcFurnace Activate firnaceImport
+l firnaceImport ArcSlotReader Setting
+sb kArcFurnace Activate firnaceImport
 
 CentrifugeLogic:
 bdns Centrifuge RecyclerLogic
