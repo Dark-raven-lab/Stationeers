@@ -4,35 +4,33 @@ define kSLIDER 576516101
 define kALARMLAMP -1535893860
 define kVOICE -828056979
 define kGASSENSOR -1252983604
-define kDOOR -2105052344
+define kAIRVENT -1129453144
 define kVENTEXT HASH("Ext.Active Vent")
 define kVENTINT HASH("Int.Active Vent")
-define kDOORINT HASH("Int.Airlock")
-define kVENTINT HASH("Int.AirVent")
+alias DoorInt d0
+alias DoorExt d1
 alias Gas d2
 alias Lamp d5
 alias pressInt r14
 alias pressExt r13
 alias pressOut r12
 alias skipAirLook r11
-alias hashDoorBack r10
-alias hashDoorFront r9
-alias hashVentBack r8
-alias hashVentFront r7
+alias hashVentBack r10
+alias hashVentFront r9
 Init:
 sb kSLIDER Lock 0
 sb kSLIDER On 0
-sbn kDOOR kDOOREXT Setting 0
-sbn kDOOR kDOORINT Setting 0
-lbn r0 kDOOR kDOORINT Open Sum
+s DoorInt Setting 0
+s DoorExt Setting 0
+l r0 DoorInt Open
 select r1 r0 0 1
-sbn kDOOR kDOORINT On r1
-sbn kDOOR kDOOREXT On r0
-sbn kDOOR kDOOREXT Open r1
-sbn kDOOR kDOORINT Lock 0
-sbn kDOOR kDOOREXT Lock 0
-sbn kDOOR kDOORINT Mode 1
-sbn kDOOR kDOOREXT Mode 1
+s DoorInt On r1
+s DoorExt On r0
+s DoorExt Open r1
+s DoorInt Lock 0
+s DoorExt Lock 0
+s DoorInt Mode 1
+s DoorExt Mode 1
 Main:
 yield
 beqz kAutoMode CheckDoors
@@ -48,62 +46,64 @@ and r0 r3 r4
 sb kSLIDER On r0
 yield
 CheckDoors:
-lbn r1 kDOOR kDOORINT Setting Maximum
-lbn r0 kDOOR kDOOREXT Setting Maximum
+l r1 DoorInt Setting
+l r0 DoorExt Setting
 lb skipAirLook kSLIDER On Maximum
 beq r1 1 GoInt # if Open
 beq r0 1 GoExt # if Open
 j Main
 GoInt:
+alias DoorBack d1 # Ext
+alias DoorFront d0 # Int
 l pressInt Gas Pressure # Save cur pressure
 move pressOut pressExt
 j AirLookReady
 GoExt:
+alias DoorBack d0 # Int
+alias DoorFront d1 # Ext
 l pressExt Gas Pressure # Save cur pressure
 move pressOut pressInt
 AirLookReady:
-select hashDoorBack r0 kDOORINT kDOOREXT
-select hashDoorFront r1 kDOORINT kDOOREXT
 select hashVentBack r0 kVENTINT kVENTEXT
 select hashVentFront r1 kVENTINT kVENTEXT
 AirLook:
-sbn kDOOR hashDoorFront Setting 0
+s DoorFront Setting 0
 bgtz skipAirLook CloseDoor
-lbn r0 kDOOR hashDoorFront On Maximum
+l r0 DoorFront On
 sb kVOICE On r0
 sb kALARMLAMP On r0
 sb kSLIDER On r0
 sb kSLIDER Lock r0
-sbn -1129453144 hashVentBack Lock r0
-sbn -1129453144 hashVentFront Lock r0
+s DoorBack Lock r0
+sbn kAIRVENT hashVentBack Lock r0
+sbn kAIRVENT hashVentFront Lock r0
 brdns Lamp 2
 s Lamp On r0
-beqz r0 Main
+beqz r0 Main # exit after circle
 sb kVOICE Mode 9
 CloseDoor:
-sbn kDOOR hashDoorBack On 1 # enable door in
-sbn kDOOR hashDoorBack Open 0 # closed door in
+s DoorBack On 1 # enable door in
+s DoorBack Open 0 # closed door in
 sleep 0.5
-sbn kDOOR hashDoorBack On 0 # disable door in
 bgtz skipAirLook OpenDoor
 StartDepressure:
 l r1 Gas Pressure
-sbn -1129453144 hashVentBack Mode 1 # set mode depressure
-sbn -1129453144 hashVentFront On 0
+sbn kAIRVENT hashVentBack Mode 1 # set mode
+sbn kAIRVENT hashVentFront On 0
 WaitDepressure:
 yield
 l r15 Gas Pressure # check pressure
 div r0 r15 r1
 sb kSLIDER Setting r0
 sgtz r0 r15 # enable if pressure > 0
-lbn r1 kDOOR hashDoorFront Setting Maximum
+l r1 DoorFront Setting
 xor r0 r0 r1
-sbn -1129453144 hashVentBack On r0
+sbn kAIRVENT hashVentBack On r0
 bgtz r0 WaitDepressure # if press != 0 retern
 Pressurization:
-sbn kDOOR hashDoorFront Setting 0
-sbn -1129453144 hashVentFront Mode 0 # First!
-sbn -1129453144 hashVentFront PressureExternal pressOut
+s DoorFront Setting 0
+sbn kAIRVENT hashVentFront Mode 0 # First!
+sbn kAIRVENT hashVentFront PressureExternal pressOut
 WaitPressurization:
 yield
 l r15 Gas Pressure
@@ -111,17 +111,17 @@ sub r1 pressOut kAccuracyPressure # Need pressure
 div r0 r15 r1
 sb kSLIDER Setting r0
 slt r0 r15 r1
-lbn r1 kDOOR hashDoorFront Setting Maximum
+l r1 DoorFront Setting
 xor r0 r0 r1
-sbn -1129453144 hashVentFront On r0
+sbn kAIRVENT hashVentFront On r0
 bgtz r0 WaitPressurization
 sb kVOICE Mode 25
 OpenDoor:
-sbn kDOOR hashDoorFront Open 1
+s DoorFront Open 1
 sleep 1
-sbn kDOOR hashDoorFront On 0
-sbn kDOOR hashDoorBack On 1
-sbn kDOOR hashDoorFront Setting 0
+s DoorFront On 0
+s DoorBack On 1
+s DoorFront Setting 0
 bgtz skipAirLook Main
 yield
 j AirLook
