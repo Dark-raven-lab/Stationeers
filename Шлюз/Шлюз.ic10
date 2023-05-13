@@ -1,16 +1,15 @@
-define kAccuracyPressure 10
-define kAutoMode 0
+define kAccuracyPressure 10 # kPa
+define kAutoMode 0 # if 1 then need 3 gas sensor
 define kSLIDER 576516101
 define kALARMLAMP -1535893860
 define kVOICE -828056979
 define kGASSENSOR -1252983604
 define kDOOR -2105052344
-define kDOOREXT HASH("Ext.Airlock")
-define kVENTEXT HASH("Ext.AirVent")
+define kVENTEXT HASH("Ext.Active Vent")
+define kVENTINT HASH("Int.Active Vent")
 define kDOORINT HASH("Int.Airlock")
 define kVENTINT HASH("Int.AirVent")
 alias Gas d2
-alias VentExt d4
 alias Lamp d5
 alias pressInt r14
 alias pressExt r13
