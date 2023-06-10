@@ -15,8 +15,7 @@ define kAutoEnabled 1
 define turnBeaconIn 20 # ticks
 define beaconPowerDuration 4 # ticks
 
-alias display1 d1 # optional
-alias display2 d2 # optional
+define kLCDPOWER HASH("LCD POWER")
 
 alias counter r15
 alias oldCharge r14
@@ -38,6 +37,7 @@ define BATTERYSMALL -400115994
 define GENERATORCOAL 813146305
 define GENERATORGAS 1165997963
 define METEOSTATION 1997212478
+define LCDPOWER -53151617
 
 Main:
 yield
@@ -99,14 +99,9 @@ move counterDisplay 0
 select displaySwitch displaySwitch 0 1
 select r2 displaySwitch 1 2
 select r3 displaySwitch powerPercent diffCharge
-brdns display1 4
-s display1 Color r1
-s display1 Mode r2
-s display1 Setting r3
-brdns display2 4
-s display2 Color r1
-s display2 Mode r2
-s display2 Setting r3
+sbn LCDPOWER kLCDPOWER Color r1
+sbn LCDPOWER kLCDPOWER Mode r2
+sbn LCDPOWER kLCDPOWER Setting r3
 beqz isLowCharge VoicePower
 add counterVoice counterVoice 1
 sgt r0 counterVoice 20

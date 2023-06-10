@@ -26,7 +26,7 @@ s Furnace Open 1
 Main:
 yield
 l r0 Furnace PrefabHash
-s db r0 Setting
+s db Setting r0
 
 l r1 Furnace Temperature
 l r2 Furnace Pressure

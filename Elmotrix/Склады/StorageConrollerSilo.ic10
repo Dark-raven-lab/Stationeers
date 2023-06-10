@@ -28,7 +28,7 @@ s db Setting ID
 ls Avalue Sorter 0 OccupantHash
 snez r0 Avalue
 s Sorter On r0
-beqz Avalue ComStart
+beqz Avalue SkipSorter
 seq r0 AllowedHash Avalue
 breqz r0 2
 ls MaxStack Sorter 0 MaxQuantity
@@ -36,8 +36,11 @@ l r1 StorageUnit Quantity
 slt r1 r1 MaxFillLimit
 and r0 r0 r1
 s Sorter Output r0
-# Stacker
+SkipSorter:
+bdns Stacker ComStart
 ls r0 Stacker 0 Occupied
+ls r1 Stacker 1 Occupied
+or r0 r0 r1
 s Stacker On r0
 ComStart:
 move r3 ComValue
@@ -67,7 +70,6 @@ j Start
 EjectItem:
 bne Avalue AllowedHash Start
 seqz r0 EjectFlag
-s StorageUnit On r0
 s StorageUnit Open r0
 add EjectFlag EjectFlag 1
 brlt EjectFlag 5 3 #Edit this number (not the 3)

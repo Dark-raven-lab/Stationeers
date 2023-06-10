@@ -1,0 +1,59 @@
+define kTimerTick 8
+
+alias Filter d0
+alias O2 d1
+alias Sliper1 d3
+alias Sliper2 d4
+alias Sliper3 d5
+
+alias timer r15
+alias disable r14
+alias close r13
+
+Main:
+yield
+# Occupied control
+bdns Sliper1 4
+ls r0 Sliper1 Occupied
+l r1 Sliper1 Open
+s Sliper1 On r0
+bdns Sliper2 4
+ls r0 Sliper2 Occupied
+l r2 Sliper2 Open
+s Sliper2 On r0
+bdns Sliper3 4
+ls r0 Sliper3 Occupied
+l r3 Sliper3 Open
+s Sliper3 On r0
+# closing slippers
+add r0 r1 r2
+add r0 r0 r3
+jal TimerCloseSlippers
+
+O2Control:
+move r0 close
+beqz r0 SkipCo2 # off
+# logic
+l r0 Filter RatioOxygenInput
+l r1 Filter PressureInput
+mul r1 r0 r1
+sle r0 r1 50
+SkipO2:
+s O2 On r0
+s Filter Mode r0
+j Main
+
+TimerCloseSlippers:
+seqz close r0 # 0 if open and 1 if close
+select timer close 0 timer # if was manual close
+beq close 1 ra # exit if close
+add timer timer 1 # +1 for tick
+bltal timer kTimerTick ra # wait
+move timer 0
+bdns Sliper1 2
+s Sliper1 Open 0
+bdns Sliper2 2
+s Sliper2 Open 0
+bdns Sliper3 2
+s Sliper3 Open 0
+j ra

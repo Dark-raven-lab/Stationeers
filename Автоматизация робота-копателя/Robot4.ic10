@@ -12,95 +12,99 @@ define posUnloadZ -15
 define posMiningX 20
 define posMiningY 0
 define posMiningZ -32
-
+# DEVICES
 alias ROBOT d0
 alias LEVER d1
 alias LCDPOWER d2
-
+alias LcdSpeed d3
+alias LcdMode d4
+alias lcdStorage d5
+# 
 alias mode r15
 alias goHome r14
-alias enable r13
 Init:
 s LCDPOWER Mode 1
 s ROBOT Mode 0
-WaitingOn:
+Waiting:
 yield
-l enable LEVER Open
-s ROBOT On enable
-s LCDPOWER On enable
-s LCDPOWER Mode enable
-beqz enable WaitingOn # == 0
+l r0 LEVER Open
+s ROBOT On r0
+s LCDPOWER On r0
+beq r0 0 Waiting # Exit
+jal UpdateSystem
+
 GoToRoam:
 s ROBOT TargetX posMiningX
 s ROBOT TargetY posMiningY
 s ROBOT TargetZ posMiningZ
-s ROBOT Mode 5
-s db Setting 5 # set move LCD
-jal Travel # waiting to finish
+jal StartTravel # waiting to finish
+
 SetRoam:
 s ROBOT Mode 3
 s db Setting 3 # set move LCD
 Roaming:
 yield
-jal UpdateAllSystem
+jal UpdateSystem
 beqz mode SetRoam
-beq mode 6 GoToUnload
+beq mode 6 GoToUnload # IS FULL
 j Roaming
+
 GoToUnload:
 s ROBOT TargetX posUnloadX
 s ROBOT TargetY posUnloadY
 s ROBOT TargetZ posUnloadZ
-s ROBOT Mode 5
-jal Travel # waiting finish
+jal StartTravel # waiting finish
 s ROBOT Mode 4 # Unload mode
-s db Setting 4 # set move LCD
+s db Setting 4
 Unloading:
 yield
 l mode ROBOT Mode
 bnez mode Unloading # wait Unload
 Unloaded:
 bgtz goHome GoToHome
-jal UpdateAllSystem
+jal UpdateSystem
 j GoToRoam
 
+StartTravel:
+s ROBOT Mode 5
 Travel:
 yield
 yield
-l r0 ROBOT Mode
-bnez r0 Travel # wait a != 0
-j ra # On point
-
-UpdateAllSystem:
-l mode ROBOT Mode
-s db Setting mode # set move LCD
-ls r0 ROBOT 0 ChargeRatio
+#l r0 ROBOT Mode
+#bnez r0 Travel # wait a != 0
+#j ra # On point
+UpdateSystem:
+l mode ROBOT Mode # MODE
+s db Setting mode # set visual mode
+ls r0 ROBOT 0 ChargeRatio # POWER
 s LCDPOWER Setting r0 # set power LCD
-
 slt goHome r0 MinChargePrecent
 select r0 goHome 4 2 # red or green color
 s LCDPOWER Color r0
-# go to Home if charge <= MinCharge
-bnez goHome GoToUnload
-# if low charge go to Home
-bnez goHome GoToUnload
-# check storm
-lb r0 1997212478 Mode Maximum
+brdns LcdSpeed 3
+l r0 ROBOT VelocityMagnitude
+s LcdSpeed Setting r0
+brdns lcdStorage 3
+l r0 ROBOT MineablesInQueue
+s lcdStorage Setting r0
+brdns LcdMode 2
+s LcdMode Setting mode
+beq goHome 1 SkipCheck # EXIT
+beq goHome 1 GoToUnload # LOW CHARGE !!!
+lb r0 1997212478 Mode Maximum # check storm
 sgtz goHome r0 # r0 > 0
-# if was storm go to Home
-bnez goHome GoToUnload
-# check lever
-l enable LEVER Open
-select goHome enable 0 1
-bnez goHome GoToUnload # go if == 0
-j ra
+bnez goHome GoToUnload # STORM !!!
+l goHome LEVER Open
+beq goHome 0 GoToHome # LEVER !!!
+SkipCheck:
+beq mode 0 ra
+j Travel
 
 GoToHome:
 s ROBOT TargetX posHomeX
 s ROBOT TargetY posHomeY
 s ROBOT TargetZ posHomeZ
-s ROBOT Mode 5
-s db Setting 5 # set move LCD
-jal Travel
+jal StartTravel
 s LEVER Open 0 # close
 move goHome 0 # is home
-j WaitingOn
+j Waiting
