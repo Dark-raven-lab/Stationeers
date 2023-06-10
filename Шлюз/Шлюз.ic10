@@ -97,11 +97,11 @@ div r0 r15 r1
 sb kSLIDER Setting r0
 sgtz r0 r15 # enable if pressure > 0
 l r1 DoorFront Setting
-xor r0 r0 r1
+xor r0 r0 r1 # !
 sbn kAIRVENT hashVentBack On r0
+s DoorFront Setting 0
 bgtz r0 WaitDepressure # if press != 0 retern
 Pressurization:
-s DoorFront Setting 0
 sbn kAIRVENT hashVentFront Mode 0 # First!
 sbn kAIRVENT hashVentFront PressureExternal pressOut
 WaitPressurization:
@@ -114,6 +114,7 @@ slt r0 r15 r1
 l r1 DoorFront Setting
 xor r0 r0 r1
 sbn kAIRVENT hashVentFront On r0
+s DoorFront Setting 0
 bgtz r0 WaitPressurization
 sb kVOICE Mode 25
 OpenDoor:
@@ -121,7 +122,6 @@ s DoorFront Open 1
 sleep 1
 s DoorFront On 0
 s DoorBack On 1
-s DoorFront Setting 0
 bgtz skipAirLook Main
 yield
 j AirLook
