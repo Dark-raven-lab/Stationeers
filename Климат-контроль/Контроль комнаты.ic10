@@ -1,0 +1,82 @@
+﻿# Settings
+define kSetTemp 25 # C
+define kHysteresis 3 # +-
+# Light control
+define kHASHLAMP 555215790
+# DEVICES
+alias GasSensor d0
+alias OccupSensor d1
+alias RegTemp d2
+alias Heater d3
+alias Cooler d4
+# REGISTERS
+alias coolling r15
+alias heating r14
+alias current r13
+alias set r12
+alias min r11
+alias max r10
+alias pressureOld r9
+alias doorClosed r8
+alias lightToggle r7
+# CONSTAINS
+FirstStart:
+brdns RegTemp 3
+s RegTemp Mode 50
+s RegTemp Setting kSetTemp
+Main:
+yield
+# Light
+bdns OccupSensor TemperatureControl
+l r0 OccupSensor Activate
+beq r0 lightToggle TemperatureControl
+sb kHASHLAMP On r0
+sb -722284333 On r0 # Console
+sb 801677497 On r0 # Corner Console
+move lightToggle r0
+TemperatureControl:
+l current GasSensor Temperature
+move set kSetTemp
+bdns RegTemp CalculateTemp
+l set RegTemp Setting
+CalculateTemp:
+sub current current 273.15 # Calculate Temp In C
+sub min set kHysteresis # Minimum
+add max set kHysteresis # Maximum
+select min heating set min # Select limit
+select max coolling set max # Select limit
+slt heating current min # op2 < op3
+sgt coolling current max # op2 > op3
+brdns Heater 2
+s Heater On heating
+brdns Cooler 2
+s Cooler On coolling
+sb 24258244 On heating # WallHeater
+sb -1369060582 On coolling # WaterWallCooler
+sb -739292323 On coolling # GasWallCooler
+# Depresure Control
+l r1 GasSensor Pressure
+sub r0 r1 pressureOld
+abs r0 r0
+#s db Setting r0 #DEBUG
+sge r0 r0 0.5 # diff
+move pressureOld r1
+l r1 GasSensor Combustion # FIRE
+or r0 r0 r1 # Select 1
+beqz r0 SkipDoor
+bgtz doorClosed SkipDoor
+# ONCE
+sb 1736080881 Open 0 # HANGAR DOOR S
+sb -566348148 Open 0 # HANGAR DOOR M
+sb -1351081801 Open 0 # HANGAR DOOR L
+sb -324331872 Open 0 # Glass Door
+sb -793837322 Open 0 # Composit Door
+SkipDoor:
+move doorClosed r0
+bgtz doorClosed SkipPressure
+# Pressure Control
+
+
+SkipPressure:
+sb -1535893860 On doorClosed # ALERT LAMP
+j Main
