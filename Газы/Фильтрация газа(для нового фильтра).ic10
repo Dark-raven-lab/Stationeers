@@ -1,18 +1,15 @@
 define kMaxPresInGasTank 15000 # kpA
 define kMaxTemp 130 # C
 define kMinRatio 0.01 # 1%
-
 # DEVICES
 alias Slider d0 # optional
 alias WarningLamp d1 # optional
-
 # REGISTERS
 alias warningOn r15
 alias oldState r14
 alias filterEnable r13
 alias maxGasTemp r12
 alias typeGas r11
-
 Start:
 move typeGas 0
 s db Mode 1 # enable for one tick
@@ -43,10 +40,16 @@ add maxGasTemp kMaxTemp 273.15
 # Setting devices
 brdns Slider 2
 s Slider Lock 1
-
 Main:
 yield
-# check filters
+l r0 db Open
+beqz r0 CheckFilters
+# DISABLED SYSTEM
+s db Mode 1
+s db On 0
+yield
+j 1 # Initialisation
+CheckFilters:
 ls r0 db 0 Occupied
 ls r1 db 1 Occupied
 add r2 r0 r1

@@ -1,27 +1,36 @@
-define kMaxPressure 100
-define kMinTemp 30
-# PUMP CO2
-define kRatio1 0.2
+define kMinPressureOut 101 # kPa
+define kMaxTemp 30 # C
+define kMinTemp 15 # C
 # FILTER CO2 (HOT)
-define kRatio2 0.05
-
+define kRatioFilter 0.05 # %
+# PUMP CO2
+define kRatioPump 0.2 # %
 # DEVICES
-alias FilterCo2 db
-alias PumpCo2 d0
-alias Slider d1
+alias Filter db
+alias Slider d0
+alias Pump d1
 # REGISTERS
 alias lightState r15
 alias temperature r13
-alias ratioCO2 r12
-Start:
-brdns PumpCo2 3
-s PumpCo2 Lock 1
-s PumpCo2 Setting 50
+alias ratio r12
+FirstStart:
+brdns Pump 2
+s Pump Lock 1
 brdns Slider 2
 s Slider Lock 1
-s FilterCo2 Open 0
+s Filter Open 0
 Main:
 yield
+l r0 db Open
+beqz r0 CheckFilters
+# DISABLED SYSTEM
+s db Mode 1
+brdns Pump 3
+s Pump On 0
+s Pump Lock 0
+s db On 0
+yield
+j 1 # Initialisation
 CheckFilters:
 bdns Slider WarningExit # skip if not connected
 ls r0 db 0 Quantity
@@ -42,27 +51,35 @@ move lightState 0
 sb -1535893860 On 0
 WarningExit:
 
-l r1 FilterCo2 PressureOutput
-slt r1 r1 kMaxPressure # PRESSURE
+l r1 Filter PressureOutput
+slt r1 r1 kMinPressureOut # r1 = PRESSURE
 
-l ratioCO2 FilterCo2 RatioCarbonDioxideOutput
-slt r2 ratioCO2 kRatio1 # RATIO
+l ratio Filter RatioCarbonDioxideOutput
+slt r2 ratio kRatioPump # r2 = RATIO
 
-l temperature FilterCo2 TemperatureOutput
+l temperature Filter TemperatureOutput
 sub temperature temperature 273.15
 
-slt r3 temperature kMinTemp # TEMPERATURE
+slt r3 temperature kMaxTemp
+sgt r4 temperature kMinTemp
+and r3 r3 r4 # r3 = TEMPERATURE
 
+# FILTER
 or r0 r1 r2
 and r0 r0 r3
+s Filter Mode r0
 
-brdns PumpCo2 2
-s PumpCo2 On r0
+# PUMP
+brdns Pump 2
 
-slt r2 ratioCO2 kRatio2 # RATIO
+
+
+s Pump On r0
+
+slt r2 ratio kRatioFilter # RATIO
 
 and r0 r1 r2
 and r0 r0 r3
-s FilterCo2 Mode r0
+
 
 j Main
