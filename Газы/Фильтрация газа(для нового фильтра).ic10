@@ -1,15 +1,16 @@
 define kMaxPresInGasTank 15000 # kpA
+# For Start Filtration
 define kMaxTemp 130 # C
-define kMinRatio 0.01 # 1%
+define kMinTemp -50 # C
+define kMinRatio 0.01 # 0.01 = 1%
 # DEVICES
 alias Slider d0 # optional
-alias WarningLamp d1 # optional
+alias DropGas d1 # optional
 # REGISTERS
-alias warningOn r15
-alias oldState r14
-alias filterEnable r13
-alias maxGasTemp r12
-alias typeGas r11
+alias warning r15
+alias lightState r14
+alias filterState r13
+alias typeGas r12
 Start:
 move typeGas 0
 s db Mode 1 # enable for one tick
@@ -36,7 +37,7 @@ move typeGas 6
 beqz typeGas Start
 # contune
 s db Open 0
-add maxGasTemp kMaxTemp 273.15
+
 # Setting devices
 brdns Slider 2
 s Slider Lock 1
@@ -45,10 +46,12 @@ yield
 l r0 db Open
 beqz r0 CheckFilters
 # DISABLED SYSTEM
+brdns DropGas 2
+s DropGas On 0
 s db Mode 1
 s db On 0
 yield
-j 1 # Initialisation
+j 1 # Initialization
 CheckFilters:
 ls r0 db 0 Occupied
 ls r1 db 1 Occupied
@@ -64,34 +67,32 @@ SetSlider:
 brdns Slider 3 # skip if not connected
 s Slider Setting r0 # precent
 s Slider On r1 # enable/disable
-seqz warningOn r0 # 1 if x == 0
+seqz warning r0 # 1 if x == 0
 
 # tank control
-# 0 if GasTank.Pressure > kMaxPresInGasTank
 l r0 db PressureOutput
-slt filterEnable r0 kMaxPresInGasTank
-beqz filterEnable SetFilter
+brdns DropGas 3
+sgt r1 r0 45000
+s DropGas On r1
 
-# 1 warningOn == 0
-seqz filterEnable warningOn 
-beqz filterEnable SetFilter
+# 0 if GasTank.Pressure > kMaxPresInGasTank
+slt filterState r0 kMaxPresInGasTank
+beqz filterState SetFilter
 
-# 0 if DirtyTank.Temp > maxGasTemp
+# 1 warning == 0
+seqz filterState warning 
+beqz filterState SetFilter
+
 l r0 db TemperatureInput
-slt filterEnable r0 maxGasTemp
-beqz filterEnable SetFilter
+sub r0 r0 273.15
 
-# if pressNotZero
-jal GetGasRatio
-l filterEnable db Mode
-select r1 filterEnable 0 kMinRatio
-sgt filterEnable r0 r1
-SetFilter:
-s db Mode filterEnable
-#s db Setting r0
+# 0 if DirtyTank.Temp > Max Gas Temp
+slt filterState r0 kMaxTemp
+beqz filterState SetFilter
 
-bdseal WarningLamp Warning
-j Main
+# 0 if DirtyTank.Temp < Min Gas Temp
+sgt filterState r0 kMinTemp
+beqz filterState SetFilter
 
 GetGasRatio:
 move r0 0
@@ -107,20 +108,14 @@ brne typeGas 5 2
 l r0 db RatioNitrousOxideInput
 brne typeGas 6 2
 l r0 db RatioPollutantInput
-j ra
-
+SelectState:
+l filterState db Mode
+select r1 filterState 0 kMinRatio
+sgt filterState r0 r1
+SetFilter:
+s db Mode filterState
 Warning:
-# if (warningOn == 1) { Flicker On }
-breqz warningOn 4 # exit if warningOn == 0
-move oldState 1
-s WarningLamp On 1
-j ra
-# else if (warningOn == 0 && oldState == 1)
-# { Flicker Off; oldState = warningOn }
-seqz r0 warningOn # warningOn == 0
-seq r1 oldState 1 # oldState == 1
-and r0 r0 r1 # r0 = 1 && r1 == 1
-beqz r0 ra # exit if r0 == 0
-move oldState 0
-s WarningLamp On 0
-j ra
+lb r0 123 On Minimum
+beq r0 warning Main
+sb 123 On warning
+j Main
