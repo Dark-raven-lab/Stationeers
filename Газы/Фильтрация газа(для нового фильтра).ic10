@@ -112,6 +112,7 @@ Warning:
 # if (warningOn == 1) { Flicker On }
 breqz warning 4 # exit if warningOn == 0
 move lightState 1
+brdns WarningLamp 2
 s WarningLamp On 1
 j Main
 # else if (warningOn == 0 && oldState == 1)
