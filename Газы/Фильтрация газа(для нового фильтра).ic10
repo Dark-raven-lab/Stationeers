@@ -5,7 +5,7 @@ define kMinTemp -50 # C
 define kMinRatio 0.01 # 0.01 = 1%
 # DEVICES
 alias Slider d0 # optional
-alias DropGas d1 # optional
+alias WarningLamp d1 # optional
 # REGISTERS
 alias warning r15
 alias lightState r14
@@ -37,7 +37,6 @@ move typeGas 6
 beqz typeGas Start
 # contune
 s db Open 0
-
 # Setting devices
 brdns Slider 2
 s Slider Lock 1
@@ -46,8 +45,6 @@ yield
 l r0 db Open
 beqz r0 CheckFilters
 # DISABLED SYSTEM
-brdns DropGas 2
-s DropGas On 0
 s db Mode 1
 s db On 0
 yield
@@ -56,7 +53,7 @@ CheckFilters:
 ls r0 db 0 Occupied
 ls r1 db 1 Occupied
 add r2 r0 r1
-max r2 r2 1 
+max r2 r2 1
 ls r0 db 0 Quantity
 ls r1 db 1 Quantity
 add r0 r0 r1 # summ, 0-200
@@ -71,28 +68,25 @@ seqz warning r0 # 1 if x == 0
 
 # tank control
 l r0 db PressureOutput
-brdns DropGas 3
-sgt r1 r0 45000
-s DropGas On r1
 
-# 0 if GasTank.Pressure > kMaxPresInGasTank
+# 1 if GasTank.Pressure < kMaxPresInGasTank
 slt filterState r0 kMaxPresInGasTank
-beqz filterState SetFilter
+beqz filterState SetFilter # EXIT
 
 # 1 warning == 0
-seqz filterState warning 
-beqz filterState SetFilter
+seqz filterState warning
+beqz filterState SetFilter # EXIT
 
 l r0 db TemperatureInput
 sub r0 r0 273.15
 
-# 0 if DirtyTank.Temp > Max Gas Temp
+# 1 if DirtyTank.Temp < Max Gas Temp
 slt filterState r0 kMaxTemp
-beqz filterState SetFilter
+beqz filterState SetFilter # EXIT
 
-# 0 if DirtyTank.Temp < Min Gas Temp
+# 1 if DirtyTank.Temp > Min Gas Temp
 sgt filterState r0 kMinTemp
-beqz filterState SetFilter
+beqz filterState SetFilter # EXIT
 
 GetGasRatio:
 move r0 0
@@ -115,7 +109,17 @@ sgt filterState r0 r1
 SetFilter:
 s db Mode filterState
 Warning:
-lb r0 123 On Minimum
-beq r0 warning Main
-sb 123 On warning
+# if (warningOn == 1) { Flicker On }
+breqz warning 4 # exit if warningOn == 0
+move lightState 1
+s WarningLamp On 1
+j Main
+# else if (warningOn == 0 && oldState == 1)
+# { Flicker Off; oldState = warningOn }
+seqz r0 warning # warningOn == 0
+seq r1 lightState 1 # oldState == 1
+and r0 r0 r1 # r0 = 1 && r1 == 1
+beqz r0 Main # exit if r0 == 0
+move lightState 0
+s WarningLamp On 0
 j Main
