@@ -5,7 +5,7 @@ define kPrecentInpt1 33 # %
 # Max pressure TankMix
 define kMaxPressTankMix 5000 # kpa
 # Min pressure in Tank 1 or Tannk2
-define kMinPresTanks 100 # kPa
+define kMinPresTanks 50 # kPa
 # Max temperature in Tank 1 or Tank2
 define kMaxTempTanks 45 # C
 # Optional
@@ -18,16 +18,18 @@ alias Tank2 d1
 alias TankMix d2
 alias GasMixer d3
 alias Conditioner d4 # optional
+alias Slider d5
 # REGISTERS
 alias coolingEnable r15
 alias mixerOn r14
+alias diff r13
+alias presMix r12
 # ONCE
 s GasMixer Lock 1
 l r0 TankMix PrefabHash
 brne r0 435685051 3
 s TankMix On 1
 s TankMix Lock 1
-
 main:
 yield # sleep one tick
 # Control Temperature Fuel
@@ -39,20 +41,28 @@ jal SettingMixer
 # Set power
 MixerPower:
 s GasMixer On mixerOn
+brdns Slider 2
+s Slider Setting diff
 j main # return
 
 CkeckTanks:
+#move diff 1
 # Ckeck Fuel Pressure
-l r0 TankMix Pressure
-slt mixerOn r0 kMaxPressTankMix # Pressure <= Max
+l r0 TankMix PrefabHash
+bne r0 1632165346 3
+ls mixerOn TankMix 0 Occupied
+beqz mixerOn MixerPower
+
+l presMix TankMix Pressure
+slt mixerOn presMix kMaxPressTankMix # <= Max
 beqz mixerOn MixerPower # exit if tank is full
 
 l r0 Tank1 Pressure
-sgt mixerOn r0 kMinPresTanks # 1 if Tank1.Pressure > 100
+sgt mixerOn r0 kMinPresTanks # 1 Pressure > 100
 beqz mixerOn MixerPower # if == 0
 
 l r0 Tank2 Pressure
-sgt mixerOn r0 kMinPresTanks # 1 if Tank1.Pressure > 100
+sgt mixerOn r0 kMinPresTanks # 1 Pressure > 100
 beqz mixerOn MixerPower # if == 0
 
 l r0 Tank1 Temperature
@@ -65,6 +75,7 @@ sub r0 r0 273
 slt r0 r0 kMaxTempTanks # 1 if temp1 > 50
 beqz mixerOn MixerPower # if == 0
 # mixerOn = 1 after check
+div diff presMix kMaxPressTankMix
 j ra
 
 SettingMixer:
