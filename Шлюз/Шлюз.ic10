@@ -17,7 +17,6 @@ alias pressOut r12
 alias skipAirLook r11
 alias hashVentBack r10
 alias hashVentFront r9
-Init:
 sb kSLIDER Lock 0
 sb kSLIDER On 0
 s DoorInt Setting 0
@@ -88,13 +87,13 @@ s DoorBack Open 0 # closed door in
 sleep 0.5
 bgtz skipAirLook OpenDoor
 StartDepressure:
-l r1 Gas Pressure
+l r2 Gas Pressure
 sbn kAIRVENT hashVentBack Mode 1 # set mode
 sbn kAIRVENT hashVentFront On 0
 WaitDepressure:
 yield
 l r15 Gas Pressure # check pressure
-div r0 r15 r1
+div r0 r15 r2
 sb kSLIDER Setting r0
 sgtz r0 r15 # enable if pressure > 0
 l r1 DoorFront Setting
@@ -119,10 +118,11 @@ s DoorFront Setting 0
 bgtz r0 WaitPressurization
 sb kVOICE Mode 25
 OpenDoor:
+yield
 s DoorFront Open 1
-sleep 1
 s DoorFront On 0
 s DoorBack On 1
 bgtz skipAirLook Main
-yield
+l r0 DoorFront On
+beq r0 1 OpenDoor
 j AirLook
