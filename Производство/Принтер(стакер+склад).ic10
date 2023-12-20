@@ -1,0 +1,123 @@
+#Printer Logistics V5 CowsAreEvil & DarkRaven
+alias printer d0
+alias stacker d1  #(Optiona)
+alias sorter d2   #(Optional)
+alias vending d3  #(Optional)
+alias button d4   #(Optional)
+alias console d5   #(Optional)
+alias boolWasUnload r7
+alias needPieces r8
+alias exportPieces r9
+alias counter r10
+alias ingot r11
+alias oldimport r12
+define CLEARINGOT -1
+setup:
+move ingot CLEARINGOT
+bdns sorter start
+s sorter Mode 2
+start:
+checkButton:
+bdns button checkCounter
+l r0 button Setting
+breqz r0 2
+move ingot CLEARINGOT
+checkSorter:
+bdns sorter checkCounter
+ls r0 sorter 0 Occupied
+s sorter On r0 # On/Off
+beqz r0 checkIngotArrived
+ls r0 sorter 0 OccupantHash
+seq r0 r0 ingot
+s sorter Output r0
+checkIngotArrived:
+l r0 printer ImportCount
+ble r0 oldimport checkCounter
+move ingot CLEARINGOT
+move oldimport r0
+checkCounter:
+bdns stacker checkRestock
+l r0 printer On
+beqz r0 printerclean # if printer off - exit
+l r1 printer Open
+breq r1 boolWasUnload 7
+move boolWasUnload r1
+s stacker Activate 1
+select r0 boolWasUnload 500 needPieces
+s stacker Setting r0
+s stacker On boolWasUnload
+j printerclean # Exit unload
+bnez r1 checkRestock # Exit if open
+l exportPieces printer ExportCount
+l needPieces stacker Setting
+ls r0 stacker 0 Occupied
+s stacker On r0 # Set OnOff stacker
+blt exportPieces needPieces checkRestock # wait..
+s printer Activate 0 # Disable working
+s printer On 0
+s stacker Lock 1
+l r0 stacker ImportCount
+blt r0 needPieces checkRestock # wating delivery
+yield
+s stacker Activate 1 # Give
+yield
+s stacker On 0
+printerclean:
+s printer ClearMemory 1
+s stacker ClearMemory 1
+move oldimport 0
+s printer Lock 0
+s stacker Lock 0
+checkRestock:
+yield
+bdns vending start
+l r0 printer Open
+bnez r0 start
+bne ingot CLEARINGOT start
+lr r0 printer Required 1787814293 #Waspaloy
+select ingot r0 156348098 ingot
+lr r0 printer Required -500544800 #Stellite
+select ingot r0 -1897868623 ingot
+lr r0 printer Required -586072179 #Inconel
+select ingot r0 -787796599 ingot
+lr r0 printer Required 2019732679 #Hastelloy
+select ingot r0 1579842814 ingot
+lr r0 printer Required -1493155787 #Astroloy
+select ingot r0 412924554 ingot
+lr r0 printer Required -1206542381 #Solder
+select ingot r0 -82508479 ingot
+lr r0 printer Required -626453759 #Invar
+select ingot r0 -297990285 ingot
+lr r0 printer Required 478264742 #Electrum
+select ingot r0 502280180 ingot
+lr r0 printer Required 1731241392 #Constantan
+select ingot r0 1058547521 ingot
+lr r0 printer Required 687283565 #Silver
+select ingot r0 -929742000 ingot
+lr r0 printer Required 556601662 #Nickel
+select ingot r0 -1406385572 ingot
+lr r0 printer Required -2002530571 #Lead
+select ingot r0 2134647745 ingot
+lr r0 printer Contents 1331613335 #Steel
+slt r0 r0 10
+select ingot r0 -654790771 ingot
+lr r0 printer Contents -1195893171 #Silicon
+slt r0 r0 10
+select ingot r0 -290196476 ingot
+lr r0 printer Contents -409226641 #Gold
+slt r0 r0 10
+select ingot r0 226410516 ingot
+lr r0 printer Contents -1172078909 #Copper
+slt r0 r0 10
+select ingot r0 -404336834 ingot
+lr r0 printer Contents -666742878 #Iron
+slt r0 r0 10
+select ingot r0 -1301215609 ingot
+s db Setting ingot
+brdns console 3
+
+sne r0 ingot CLEARINGOT
+s console On r0
+beq ingot CLEARINGOT start
+s vending RequestHash ingot
+j start
