@@ -1,0 +1,87 @@
+define kMaxPresAdvCnstr 15000 # kPa
+define kMaxPresCnstr 5000 # kPa
+# Oxygen connected in input1
+define kMixerInput1Oxygen 1 # 0 OR 1
+# Type gas for mixer input2
+# 1 = N2, 2 = Co2
+define kMixerTypeGas2 1
+# lock devices
+define kLocked 0
+
+# --- DEVICES
+alias StorageWaste d0
+alias OutWaste d1
+alias Tank d3
+alias Mixer d4
+alias Slider d5
+
+alias pressure r15
+alias maxPress r14
+alias advCanister r13
+alias wastePower r12
+# --- CONSTANTS
+define kADVCANISTER -668314371
+define kO2 -1152261938
+define kN2 2145068424
+define kCO2 -767685874
+
+Start:
+s Mixer Lock kLocked
+s OutWaste Lock kLocked
+s Mixer On 0
+s OutWaste On 0
+
+Main:
+yield
+# --- LOGIC TANK WASTE
+l pressure StorageWaste Pressure
+sgtz wastePower pressure
+
+# --- LOGIC TANK
+ls r0 Tank 0 Occupied
+beqz r0 SetPower
+# check canister
+ls r0 Tank 0 OccupantHash
+seq r0 r0 kADVCANISTER
+select maxPress r0 kMaxPresAdvCnstr kMaxPresCnstr
+# check pressure
+l pressure Tank Pressure
+slt r0 pressure maxPress # <
+beqz r0 SetPower # exit if press high
+# check composition
+DevicePessureRegulator:
+l r1 Mixer PrefabHash
+bne r1 209854039 DeviceGasMixer
+# Pressure Regulator
+s Mixer Setting maxPress
+DeviceGasMixer:
+bne r1 2104106366 SetPower
+# logic gas mixer
+l r1 Tank RatioOxygen
+sgtz r1 r1 # 1 if exits oxygen
+select r2 kMixerInput1Oxygen r1 0
+mul r2 r2 100
+s Mixer Setting r2
+# check hash for lcd
+brne kMixerTypeGas2 1 2
+move r2 kN2
+brne kMixerTypeGas2 2 2
+move r2 kCO2
+# check use input
+select r2 r1 kO2 r2
+# write hash for lcd
+s db Setting r2
+
+SetPower:
+s Mixer On r0
+s OutWaste On wastePower
+
+bdns Slider Main
+l r1 Tank Pressure
+l r2 StorageWaste Pressure
+select pressure r0 r1 r2
+div r1 pressure maxPress
+s Slider Setting r1
+sge r1 r1 1
+s Slider On r1
+j Main
