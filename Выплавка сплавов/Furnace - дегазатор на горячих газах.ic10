@@ -5,19 +5,20 @@ alias Furnace d0
 alias HotGas d1
 alias DropGas d2
 
-Start: # Once for run
+# Once for run
+Start:
 l r0 HotGas PrefabHash
 brne r0 -1129453144 2 # activ vent
 s HotGas Mode 1
 brne r0 -321403609 2 # volume pump
-s HotGas Setting 100
+s HotGas Setting 10
 
 l r0 DropGas PrefabHash
 brne r0 -1129453144 3  # activ vent
 s DropGas Mode 0
 s DropGas PressureExternal 300
 brne r0 -321403609 2 # volume pump
-s HotGas Setting 100
+s HotGas Setting 10
 
 s HotGas Lock 1
 s DropGas Lock 1
