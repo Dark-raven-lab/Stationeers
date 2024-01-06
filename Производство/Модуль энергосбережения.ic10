@@ -1,0 +1,35 @@
+# Code for energy saving after disable printers
+define kMaxTimeout 5 # seconds
+
+alias Print1 d0
+alias Print2 d1
+alias Print3 d2
+alias Socket1 d3
+alias Socket2 d4
+alias Socket3 d5
+
+alias timeout r15
+alias wasEnabled r14
+
+Main:
+yield
+s db Setting timeout
+l r1 Print1 On
+l r2 Print2 On
+l r3 Print3 On
+
+or r1 r1 r2
+or r0 r1 r3
+
+beq r0 wasEnabled Main
+select timeout r0 kMaxTimeout timeout
+bgtz r0 SetPower # Skip if ON
+
+sub timeout timeout 0.5
+bgtz timeout Main # waiting
+SetPower:
+move wasEnabled r0
+s Socket1 On r0
+s Socket2 On r0
+s Socket3 On r0
+j Main
