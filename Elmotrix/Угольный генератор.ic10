@@ -1,0 +1,106 @@
+define kDeliveryAdress 13 # adress
+define kTimeout 60 # sec
+define kHASHFUEL 1724793494 # COAL
+
+alias LMStorageExternal d0
+alias LMCentralOrder d1
+alias GenCoal d3
+alias LED d4
+# registers
+alias Avalue r5
+alias Bvalue r6
+alias Cvalue r7
+alias ComValue r8
+alias timer r9
+Start:
+move timer 0 # reset timer
+brdns LED 2
+s LED Color 2 # Green
+Main:
+yield
+# Check coal in generator
+l r0 GenCoal Setting
+s db Setting r0
+bgtz r0 Start # exit if enough
+
+WaitTimer:
+blez timer ContactStorage # go contract
+sub timer timer 0.5
+s db Setting timer
+j Main # waiting...
+brdns LED 2
+s LED Color 0 # Blue
+ContactStorage:# check coal in storage
+l r0 LMStorageExternal Setting
+bnez r0 ContactStorage#waiting to be available
+#Main building the message
+move Avalue kHASHFUEL # Hash coal
+move Bvalue 50 #Quantity
+#^^ Bvalue has no function when Cvalue = 0
+move Cvalue 0 #Destination Adress
+#when Cvalue = 0 we only request available quantity
+#^^ use Cvalue &gt; 0 if you want the storage to eject
+jal Compress #Builds composit value
+#'ComValue' now holds the full message
+s LMStorageExternal Setting ComValue
+#^^ placing the order
+#Now we need to wait for the return message
+
+WaitForResponse:
+yield
+l ComValue LMStorageExternal Setting
+#^^loading whatever is there
+jal Decompress #unpacking the composit value
+#^^ this gives Avalue, Bvalue &amp; Cvalue their values
+bne Cvalue 99 WaitForResponse #back if not responce
+#^^ Cvalue = 99 indicates return value from storage
+s LMStorageExternal Setting 0
+#^^ the responce is recieved, clear the memory
+# check storage count
+sgtz r0 Avalue  # if empty
+brdns LED 3
+select r1 r0 5 4 # RED if empty
+s LED Color r1 # orange for order
+seqz r0 StartTimer # exit if storag empty
+
+PlaceOrder:
+yield
+l r0 LMCentralOrder Setting
+bnez r0 PlaceOrder
+# ^^ waiting for the memory to be available
+#Main building the message
+min Bvalue 50 Avalue # Count
+move Avalue kHASHFUEL # Hash coal
+move Cvalue kDeliveryAdress # Adress
+jal Compress #Builds composit value
+#'ComValue' now holds the full message
+s LMCentralOrder Setting ComValue
+#^^ placing the order
+StartTimer:
+move timer kTimeout # Enable Timer
+j Main
+
+Compress:
+#Input: Avalue, Bvalue, Cvalue
+#Output: ComValue
+abs r1 Avalue
+mul ComValue r1 100000
+add ComValue ComValue Cvalue
+mul r1 Bvalue 100
+add ComValue ComValue r1
+bgtz Avalue ra
+mul ComValue ComValue -1
+j ra
+Decompress:
+#Input: ComValue
+#Output: Avalue, Bvalue, Cvalue
+abs r1 ComValue
+mod Cvalue r1 100
+sub r1 r1 Cvalue
+mod Bvalue r1 100000
+sub Avalue r1 Bvalue
+div Bvalue Bvalue 100
+div Avalue Avalue 100000
+bgtz ComValue ra
+mul Avalue Avalue -1
+j ra

@@ -1,0 +1,117 @@
+alias LMCentralOrder d0
+alias DQuant d1 #Dial
+alias DSelection d2 #Dial
+alias BOrder d3 #Button
+alias CQuant d4 #NumericConsole
+alias Chute d5 #Bin
+define DeliveryAdress 11
+alias ChuteState r4
+alias Avalue r5
+alias Bvalue r6
+alias Cvalue r7
+alias ComValue r8
+alias StackPointerMax r9
+alias IsOnList r10
+alias StackMode r11
+Start:
+s CQuant On 1
+s Chute On 1
+yield
+s db Setting 0
+l r0 CQuant On
+brgtz r0 2
+seqz StackMode StackMode
+mul r0 StackMode 2
+sub r0 2 r0
+s CQuant Color r0
+s DSelection Mode StackPointerMax
+s DQuant Mode 999
+l r0 DQuant Setting
+s CQuant Setting r0
+ls Avalue Chute 0 OccupantHash
+ls Bvalue Chute 0 MaxQuantity
+min Bvalue Bvalue 100
+l ChuteState Chute On
+brgtz ChuteState 5 #ToB
+move Cvalue 0
+jal Compress
+bnezal Avalue IsOnListCheck
+bnezal Avalue AddToList
+brnez Avalue 5 #ToA B
+l sp DSelection Setting
+beqz sp ClearList
+pop ComValue
+jal Decompress
+s db Setting Avalue #A
+select r0 StackMode Bvalue 1
+l Bvalue DQuant Setting
+mul Bvalue Bvalue r0
+min Bvalue Bvalue 999
+s CQuant Setting Bvalue
+move Cvalue DeliveryAdress
+l r0 BOrder Activate
+bgtz r0 Order
+ls r0 Chute 0 OccupantHash
+beqal ChuteState r0 IsOnListCheck
+beqal ChuteState r0 DeleteFromList
+j Start
+Order:
+yield
+beqz Bvalue Start
+s db Setting 0
+l r0 LMCentralOrder Setting
+abs r1 r0
+breq r1 1 4
+mod r1 r1 100
+breq r1 99 2
+bnez r0 Order
+jal Compress
+s LMCentralOrder Setting ComValue
+j Start
+Compress:
+abs r1 Avalue
+mul ComValue r1 100000
+add ComValue ComValue Cvalue
+mul r1 Bvalue 100
+add ComValue ComValue r1
+bgtz Avalue ra
+mul ComValue ComValue -1
+j ra
+Decompress:
+abs r1 ComValue
+mod Cvalue r1 100
+sub r1 r1 Cvalue
+mod Bvalue r1 100000
+sub Avalue r1 Bvalue
+div Bvalue Bvalue 100
+div Avalue Avalue 100000
+bgtz ComValue ra
+mul Avalue Avalue -1
+j ra
+AddToList:
+bnez IsOnList ra
+move sp StackPointerMax
+push ComValue
+move StackPointerMax sp
+j ra
+DeleteFromList:
+beqz IsOnList ra
+sub StackPointerMax StackPointerMax 1
+bge sp StackPointerMax ra
+add sp sp 2
+pop r1
+sub sp sp 1
+push r1
+jr -5
+IsOnListCheck:
+move IsOnList 0
+move sp StackPointerMax
+beqz sp ra
+pop r1
+brne r1 ComValue -2
+move IsOnList 1
+j ra
+ClearList:
+bgtz ChuteState Start
+move StackPointerMax 0
+j Start

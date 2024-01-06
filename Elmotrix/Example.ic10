@@ -1,0 +1,89 @@
+alias LMStorageExternal d0
+alias LMCentralOrder d1
+alias Avalue r5
+alias Bvalue r6
+alias Cvalue r7
+alias ComValue r8
+Start:
+yield
+j Start #understanding the code check
+ContactStorageExample:
+yield
+l r0 LMStorageExternal Setting
+bnez r0 ContactStorageExample
+# ^^ waiting for the memory to be available
+
+#Start building the message
+move Avalue -654790771 #Any Hash (steel ingot)
+move Bvalue 50 #Quantity
+#^^ Bvalue has no function when Cvalue = 0
+move Cvalue 0 #Destination Adress
+#when Cvalue = 0 we only request available quantity
+#^^ use Cvalue &gt; 0 if you want the storage to eject
+jal Compress #Builds composit value
+#'ComValue' now holds the full message
+s LMStorageExternal Setting ComValue
+#^^ placing the order
+#Now we need to wait for the return message
+WaitForResponse:
+yield
+l ComValue LMStorageExternal Setting
+#^^loading whatever is there
+jal Decompress #unpacking the composit value
+#^^ this gives Avalue, Bvalue &amp; Cvalue their values
+bne Cvalue 99 WaitForResponse #back if not responce
+#^^ Cvalue = 99 indicates return value from storage
+s LMStorageExternal Setting 0
+#^^ the responce is recieved, clear the memory
+
+#************
+#Here you can add some logic
+#'Avalue' now hold the storage quantity
+#example:
+sgt r0 Avalue 500 #"if more than 500 in storage"
+s db Setting r0
+j ContactStorageExample
+
+PlaceOrderExample:
+# (same example for router)
+yield
+l r0 LMCentralOrder Setting
+bnez r0 PlaceOrderExample
+# ^^ waiting for the memory to be available
+
+#Start building the message
+move Avalue -466050668 #Any Hash (cable coil)
+move Bvalue 50 #Quantity
+move Cvalue 42 #Destination Adress
+jal Compress #Builds composit value
+#'ComValue' now holds the full message
+s LMCentralOrder Setting ComValue
+#^^ placing the order
+#Here we don't get any return message
+#..So this is now complete.
+j PlaceOrderExample
+
+Compress:
+#Input: Avalue, Bvalue, Cvalue
+#Output: ComValue
+abs r1 Avalue
+mul ComValue r1 100000
+add ComValue ComValue Cvalue
+mul r1 Bvalue 100
+add ComValue ComValue r1
+bgtz Avalue ra
+mul ComValue ComValue -1
+j ra
+Decompress:
+#Input: ComValue
+#Output: Avalue, Bvalue, Cvalue
+abs r1 ComValue
+mod Cvalue r1 100
+sub r1 r1 Cvalue
+mod Bvalue r1 100000
+sub Avalue r1 Bvalue
+div Bvalue Bvalue 100
+div Avalue Avalue 100000
+bgtz ComValue ra
+mul Avalue Avalue -1
+j ra
