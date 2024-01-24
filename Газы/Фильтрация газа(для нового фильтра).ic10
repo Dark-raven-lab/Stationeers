@@ -1,20 +1,21 @@
-# Advanced Filtering Control from DarkRaven
-# v.1.0
-define kMaxPresInGasTank 15000 # kpA
-# For Start Filtration
-define kTempStart -50 # C
-define kTempStop -10 # C
-define kRatioStart 0.01 # 0.01 = 1%, 0.1 = 10%
+# Advanced Filtering Control from DarkRaven v.1.1
+# Settings for start filtrarion
+define kMaxPressureOutput 10000 # kpA
+define kTempStart -10 # C
+define kTempStop 30 # C
+define kRatioStart 0.05 # 0.01 = 1%, 0.1 = 10%
+define kRatioStop 0.01 # 0.01 = 1%, 0.1 = 10%
 # DEVICES
 alias Slider d0 # optional
-alias WarningLamp d1 # optional
+alias PumpIN d1 # optional
 # REGISTERS
-alias warning r15
-alias lightState r14
+alias empty r15
+alias disable r14
 alias filterState r13
 alias typeGas r12
-Start:
-move lightState 0
+move disable 0
+move empty 0
+CheckTypeGasOutput:
 move typeGas 0 # reset type
 s db Mode 1 # enable for one tick
 yield
@@ -37,25 +38,25 @@ move typeGas 5
 l r0 db RatioPollutantOutput
 breqz r0 2 # if r1 == 0 then +3 line
 move typeGas 6
-beqz typeGas Start
-# contune
+beqz typeGas CheckTypeGasOutput
 s db Open 0
-# Setting devices
+Initialisation:
+select r0 disable 0 1 # inverting signal
 brdns Slider 2
-s Slider Lock 1
+s Slider Lock r0 # invert signal
+brdns PumpIN 4
+s PumpIN Setting 10
+s PumpIN Lock r0 # invert signal
+s PumpIN On 0
+s db Mode disable
+s db On r0 # invert signal
+beqz disable Main
+yield
+j 0 # simulate first start again
 Main:
 yield
-l r0 db Open
-beqz r0 CheckFilters
-# DISABLED SYSTEM
-brdns Slider 2
-s Slider Lock 0
-brdns WarningLamp 2
-s WarningLamp On 0
-s db Mode 1
-s db On 0
-yield
-j 0 # Start initialization
+l disable db Open
+bnez disable Initialisation
 CheckFilters:
 ls r0 db 0 Occupied
 ls r1 db 1 Occupied
@@ -66,55 +67,56 @@ ls r1 db 1 Quantity
 add r0 r0 r1 # summ, 0-200
 div r0 r0 r2 # x / count filters
 mul r0 r0 0.01 # x * 0.01
-slt r1 r0 0.2 # 1 if x < 20%
+slt r1 r0 0.2 # enable slider if < 20%
 SetSlider:
 brdns Slider 3 # skip if not connected
 s Slider Setting r0 # precent
 s Slider On r1 # enable/disable
-seqz warning r0 # 1 if x == 0
-# Pressure control
+seqz empty r0 # 1 if x == 0
+PressureControl:
+move filterState 0 # first state
 l r0 db PressureOutput
 # 1 if GasTank.Pressure < kMaxPresInGasTank
-slt filterState r0 kMaxPresInGasTank
-beqz filterState SetFilter # EXIT
-# 1 warning == 0
-seqz filterState warning
-beqz filterState SetFilter # EXIT
+bgt r0 kMaxPressureOutput SetFilter # EXIT
+# disable if warning == 1
+bnez empty SetFilter # EXIT
+# Check ratio water
+brdns PumpIN 3 # skip if not pump
+l r0 db RatioWaterOutput2
+bge r0 0.1 SetFilter
 # Check input temperature
-l r0 db TemperatureInput
+l r0 db TemperatureOutput2
 sub r0 r0 273.15
-# 1 if input < Max Gas Temp
-slt filterState r0 kTempStop
-beqz filterState SetFilter # EXIT
-# 1 if input > Min Gas Temp
-sgt filterState r0 kTempStart
-beqz filterState SetFilter # EXIT
+# 1 if Temperature < Max Gas Temp
+bgt r0 kTempStop SetFilter # EXIT
+# 1 if Temperature > Min Gas Temp
+blt r0 kTempStart SetFilter # EXIT
 GetGasRatio:
 move r0 0
 brne typeGas 1 2
-l r0 db RatioCarbonDioxideInput
+l r0 db RatioCarbonDioxideOutput2
 brne typeGas 2 2
-l r0 db RatioNitrogenInput
+l r0 db RatioNitrogenOutput2
 brne typeGas 3 2
-l r0 db RatioOxygenInput
+l r0 db RatioOxygenOutput2
 brne typeGas 4 2
-l r0 db RatioVolatilesInput
+l r0 db RatioVolatilesOutput2
 brne typeGas 5 2
-l r0 db RatioNitrousOxideInput
+l r0 db RatioNitrousOxideOutput2
 brne typeGas 6 2
-l r0 db RatioPollutantInput
+l r0 db RatioPollutantOutput2
 SelectState:
 l filterState db Mode
-select r1 filterState 0 kRatioStart
+select r1 filterState kRatioStop kRatioStart
 sgt filterState r0 r1
+bdns PumpIN SetFilter
+l r0 PumpIN On
+select r1 r0 40000 30000 # max / min
+l r0 db PressureInput
+slt r1 r0 r1
+and r1 r1 filterState
+s PumpIN On r1
+sgt filterState r0 100 # fix safe pressure!
 SetFilter:
 s db Mode filterState
-Warning:
-bdns WarningLamp Main
-bnez warning SetLamp # Always on!
-# Once when changing the state
-beq warning lightState Main
-SetLamp:
-move lightState warning
-s WarningLamp On lightState
 j Main
