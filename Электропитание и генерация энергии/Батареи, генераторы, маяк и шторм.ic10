@@ -1,8 +1,8 @@
 define kGeneratorsControl 1
-define kEnableCoalGenerators 0.15 # %
-define kDisableCoalGenerators 0.3 # %
-define kEnableGasGenerators 0.05 # %
-define kDisableGasGenerators 0.5 # %
+define kEnableCoalGen 0.15 # %
+define kDisableCoalGen 0.3 # %
+define kEnableGasGen 0.05 # %
+define kDisableGasGen 0.5 # %
 # WARNING
 define kIsLowCharge 0.1 # 10%
 define lightStormWarning 60 # Enable flikers
@@ -13,6 +13,7 @@ define beaconPowerOff 10 # second disabled
 # DEVICES
 alias Beacon d0
 alias Weather d1
+alias LevelFire d2
 define kLCDPOWER HASH("LCD POWER")
 # REGISTERS
 alias counterBeacon r15
@@ -25,6 +26,8 @@ alias counterDisplay r9
 alias displaySwitch r8
 alias counterVoice r7
 alias stormIncoming r6
+alias combustion r5
+alias stormTime r4
 # CONSTATNS
 define BATTERYLARGE -1388288459
 define BATTERYSMALL -400115994
@@ -59,47 +62,62 @@ SkipBeacon:
 beqz kGeneratorsControl SkipGenerators # DISABLED
 lb r0 GENERATORCOAL On Maximum
 lb r1 GENERATORGAS On Maximum
-select r0 r0 kDisableCoalGenerators kEnableCoalGenerators
-select r1 r1 kDisableGasGenerators kEnableGasGenerators
+select r0 r0 kDisableCoalGen kEnableCoalGen
+select r1 r1 kDisableGasGen kEnableGasGen
 slt r0 powerPercent r0 # x < y
 slt r1 powerPercent r1 # x < y
 sb GENERATORCOAL On r0
 sb GENERATORGAS On r1
 SkipGenerators:
-select r1 energyDecreases Color.Orange Color.Green
-select r1 isLowCharge Color.Red r1
+select r0 energyDecreases Color.Orange Color.Green
+select r0 isLowCharge Color.Red r0
+select r0 stormIncoming Color.Pink r0
+sbn LCDPOWER kLCDPOWER Color r0
 add counterDisplay counterDisplay 0.5
 brlt counterDisplay timeUpdateDisplay 3 # jump if <
  move counterDisplay 0
  select displaySwitch displaySwitch 0 1
-select r2 displaySwitch 1 2
-select r3 displaySwitch powerPercent diffCharge
-sbn LCDPOWER kLCDPOWER Color r1
-sbn LCDPOWER kLCDPOWER Mode r2
-sbn LCDPOWER kLCDPOWER Setting r3
-beqz isLowCharge SkipVoiceLowPower
-jal UpdateVoiceCounter
-select r0 r0 11 23
-sb -828056979 Mode r0 # ALARM
-SkipVoiceLowPower:
+select r0 displaySwitch 1 2
+select r0 stormIncoming 0 r0
+sbn LCDPOWER kLCDPOWER Mode r0
+select r0 displaySwitch powerPercent diffCharge
+select r0 stormIncoming stormTime r0
+sbn LCDPOWER kLCDPOWER Setting r0
+WeatherLogic:
+bdns Weather Voice # DISABLED
 l r2 Weather NextWeatherEventTime
 sgtz r0 r2 # time > 0
 slt r1 r2 lightStormWarning # <
 and stormIncoming r0 r1
-sb -1535893860 On r1 # LIGHT WARNING
-slt r1 r2 10 # # VOICE ALARM
-beqz stormIncoming VoicePower
- jal UpdateVoiceCounter
- select r0 r0 10 18
- sb -828056979 Mode r0 # ALARM
+CombustionLogic:
+move r0 0
+lb combustion -1252983604 Combustion Maximum
+brdns LevelFire 2
+l r0 LevelFire Open
+max combustion combustion r0
+s db Setting combustion
+bnan combustion Voice # Exit if NaN
+brdns LevelFire 3
+breqz combustion 2 # Disabled only manual!
+s LevelFire Open combustion
+select r0 combustion 0 1
+sb 1736080881 Open r0 # Hangar Door
+Voice:
+or r2 combustion stormIncoming
+sb -1535893860 On r2 # LIGHT WARNING
+or r2 r2 isLowCharge
+beqz r2 VoicePower
+ add counterVoice counterVoice 0.5
+ sgt r0 counterVoice 10 # max
+ select counterVoice r0 0 counterVoice # reset if max
+ slt r0 counterVoice 7
+ breqz isLowCharge 2
+  select r1 r0 11 23
+ breqz stormIncoming 2
+  select r1 r0 10 18
+ breqz combustion 2
+  select r1 r0 5 28
+sb -828056979 Mode r1 # ALARM
 VoicePower:
-or r0 isLowCharge stormIncoming
-sb -828056979 On r0
+sb -828056979 On r2
 j Main
-
-UpdateVoiceCounter:
-add counterVoice counterVoice 0.5
-sgt r0 counterVoice 10 # max
-select counterVoice r0 0 counterVoice # reset if max
-slt r0 counterVoice 8
-j ra
