@@ -1,0 +1,48 @@
+push HASH("Room 1") # Memory and LCD light
+push HASH("Room 2")
+push HASH("Room 3")
+push 0
+
+define kTimeVoice 2
+define kTimeAlert 5
+
+alias name r15
+alias lightLCD r14
+alias voiceID r13
+alias alertID r12
+alias count r11
+
+define kMEMORY -851746783
+define kLIGHT 1944485013
+define kSPEAKER -828056979
+
+reset:
+yield
+snez r0 voiceID
+sb kSPEAKER On r0
+move sp 0
+next:
+add sp sp 1
+peek name
+beqz name reset
+lbn r0 kMEMORY name Setting Average
+# Start parce message
+mod lightLCD r0 100
+sub r0 r0 lightLCD
+mod voiceID r0 10000
+sub alertID r0 voiceID
+div voiceID voiceID 100
+div alertID alertID 10000
+# END parce
+sbn kLIGHT name Color lightLCD
+
+# Voice message
+beqz voiceID next # Exit if 0
+# Set Voice Alarm
+add count count 0.5
+sgt r0 count kTimeAlert # max
+select count r0 0 count # reset
+slt r0 count kTimeVoice
+select r1 r0 voiceID alertID
+sb kSPEAKER Mode r1 # ALARM
+j reset
