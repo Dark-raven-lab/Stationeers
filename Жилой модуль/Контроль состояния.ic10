@@ -1,0 +1,127 @@
+# Settings
+define kPressure 101 # kPa
+define kPressVar 10 # +-
+define kTemperature 25 # C
+define kTempVar 1 # +-
+# Const devices name
+define kNAMELEDTEMP HASH("Led Temperature") # warning LED
+define kNAMELEDPESS HASH("Led Pressure") # warning LED
+define kNAMELEDAIR HASH("Led Air") # warning LED
+define kNAMEVENTIN HASH("Active Vent Supply") # add gas
+define kNAMEVENTOUT HASH("Active Vent Waste") # remove gas
+# Const devices
+define kACTVENTHASH -1129453144
+define kLEDLAMPHASH 1944485013
+# Manual devices
+alias ExtMemory d0
+alias GasSensor d1
+alias Cooler d3
+alias Heater d4
+# Params
+alias press r15
+alias temp r14
+alias hot r13
+alias cold r12
+alias pressHigh r11
+alias pressLow r10
+alias tempNorm r9
+Main:
+yield
+s ExtMemory Setting 2 # state ok
+l press GasSensor Pressure
+l r1 GasSensor RatioOxygen
+mul r1 press r1
+brgt r1 40 2
+    s ExtMemory Setting 3 # Warning only LED
+# CarbonDioxide CONTROL
+l r0 GasSensor RatioCarbonDioxide
+brgt r0 0.01 2
+    s ExtMemory Setting 3 # Warning only LED
+brlt r0 0.4 2
+    s ExtMemory Setting 064404 # Warning LED + VOICE
+# TEMPERATURE CONTROL:
+add r1 kTemperature kTempVar # max
+sub r2 kTemperature kTempVar # min
+select r3 hot kTemperature r1
+select r4 cold kTemperature r2
+l temp GasSensor Temperature
+sub temp temp 273.15
+sgt hot temp r3
+slt cold temp r4
+brdns Cooler 2
+s Cooler On hot
+brdns Heater 2
+s Heater On cold
+# message
+sgt r1 temp r1 # > normal
+slt r2 temp r2 # < normal
+or r1 r1 r2
+breqz r1 2
+    s ExtMemory Setting 3 # Warning LED
+select r1 r1 Color.Orange Color.Green
+sgt r2 temp 10 # > min
+slt r3 temp 45 # < max
+and tempNorm r2 r3
+select r1 tempNorm r1 Color.Red
+sbn kLEDLAMPHASH kNAMELEDTEMP Color r1
+sne r1 r1 2
+sbn kLEDLAMPHASH kNAMELEDTEMP On r1
+brgtz r2 2 # ALERT TEMP LOW LED+VOICE
+    s ExtMemory Setting 064204
+brgtz r3 2 # ALERT TEMP HIGH LED+VOICE
+    s ExtMemory Setting 064104
+# PRESSURE CONTROL
+l press GasSensor Pressure
+add r1 kPressure kPressVar
+sub r2 kPressure kPressVar
+select r3 pressHigh kPressure r1
+select r4 pressLow kPressure r2
+sgt pressHigh press r3
+slt pressLow press r4
+sbn kACTVENTHASH kNAMEVENTOUT Mode 1
+sbn kACTVENTHASH kNAMEVENTOUT On pressHigh
+sbn kACTVENTHASH kNAMEVENTIN Mode 0
+sbn kACTVENTHASH kNAMEVENTIN PressureInternal kPressure
+and r0 pressLow tempNorm
+sbn kACTVENTHASH kNAMEVENTIN On r0
+# message
+sgt r1 press r1
+slt r2 press r2
+or r0 r1 r2
+breqz r0 2
+    s ExtMemory Setting 3 # Warning LED
+select r3 r0 Color.Orange Color.Green
+sgt r1 press 50 # > min
+slt r2 press 150 # < max
+brgtz r1 2 # ALERT PRESS LOW LED
+    s ExtMemory Setting 064004
+brgtz r2 2 # ALERT PRESS HIGH LED
+    s ExtMemory Setting 063904
+and r0 r1 r2
+select r3 r0 r3 Color.Red
+sbn kLEDLAMPHASH kNAMELEDPESS Color r3
+sne r1 r3 2
+sbn kLEDLAMPHASH kNAMELEDPESS On r1
+ToxinControl:
+l r1 GasSensor RatioPollutant
+l r2 GasSensor RatioVolatiles
+l r3 GasSensor RatioNitrousOxide
+max r0 r1 r2
+max r0 r0 r3
+sgt r1 r0 0.005
+select r2 r1 Color.Orange Color.Green
+sgt r1 r0 0.01
+select r2 r1 Color.Red r2
+sbn kLEDLAMPHASH kNAMELEDAIR Color r2
+sne r2 r2 2
+sbn kLEDLAMPHASH kNAMELEDAIR On r2
+breqz r1 2
+s ExtMemory Setting 064304 # ALERT toxin detected
+FireControl:
+l r0 GasSensor Combustion
+breqz r0 2 # Exit
+s ExtMemory Setting 052804 # ALERT
+l r0 ExtMemory Setting
+blt r0 100 Main
+sb -793837322 Open 0 # CLOSE DOOR
+j Main
