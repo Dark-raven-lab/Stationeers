@@ -1,6 +1,7 @@
-push HASH("Room 1") # Memory and LCD light
-push HASH("Room 2")
-push HASH("Room 3")
+push HASH("Memory Power")
+push HASH("Memory Production")
+push HASH("Memory Smelter")
+push HASH("Memory Centrifuge")
 push 0
 
 define kTimeVoice 2
@@ -11,11 +12,13 @@ alias lightLCD r14
 alias voiceID r13
 alias alertID r12
 alias count r11
+alias speakerOn r10
 
 define kMEMORY -851746783
 define kLIGHT 1944485013
 define kSPEAKER -828056979
 
+move count 0
 reset:
 yield
 snez r0 voiceID
@@ -35,7 +38,10 @@ div voiceID voiceID 100
 div alertID alertID 10000
 # END parce
 sbn kLIGHT name Color lightLCD
+sne r1 lightLCD 2
+sbn kLIGHT name On r1 # enable != green
 
+s db Setting sp
 # Voice message
 beqz voiceID next # Exit if 0
 # Set Voice Alarm
