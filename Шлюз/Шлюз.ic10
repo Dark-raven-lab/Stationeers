@@ -103,9 +103,9 @@ s DoorFront Setting 0
 bgtz r0 WaitDepressure # if press != 0 retern
 Pressurization:
 sbn kAIRVENT hashVentFront Mode 0 # First!
-sbn kAIRVENT hashVentFront PressureExternal pressOut
 WaitPressurization:
 yield
+sbn kAIRVENT hashVentFront PressureExternal pressOut
 l r15 Gas Pressure
 sub r1 pressOut kAccuracyPressure # Need pressure
 div r0 r15 r1
