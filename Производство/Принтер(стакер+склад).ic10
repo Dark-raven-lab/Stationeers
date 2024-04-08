@@ -54,7 +54,7 @@ ls r0 stacker 0 Occupied
 s stacker On r0 # Set OnOff stacker
 blt exportPieces needPieces checkRestock # wait..
 s printer Activate 0 # Disable working
-s printer On 0
+			  
 s stacker Lock 1
 l r0 stacker ImportCount
 blt r0 needPieces checkRestock # wating delivery
@@ -62,6 +62,7 @@ yield
 s stacker Activate 1 # Give
 yield
 s stacker On 0
+s printer On 0
 printerclean:
 s printer ClearMemory 1
 s stacker ClearMemory 1
@@ -99,19 +100,19 @@ select ingot r0 -1406385572 ingot
 lr r0 printer Required -2002530571 #Lead
 select ingot r0 2134647745 ingot
 lr r0 printer Contents 1331613335 #Steel
-slt r0 r0 10
+slt r0 r0 50
 select ingot r0 -654790771 ingot
 lr r0 printer Contents -1195893171 #Silicon
 slt r0 r0 10
 select ingot r0 -290196476 ingot
 lr r0 printer Contents -409226641 #Gold
-slt r0 r0 10
+slt r0 r0 30
 select ingot r0 226410516 ingot
 lr r0 printer Contents -1172078909 #Copper
-slt r0 r0 10
+slt r0 r0 20
 select ingot r0 -404336834 ingot
 lr r0 printer Contents -666742878 #Iron
-slt r0 r0 10
+slt r0 r0 30
 select ingot r0 -1301215609 ingot
 s db Setting ingot
 brdns console 3
