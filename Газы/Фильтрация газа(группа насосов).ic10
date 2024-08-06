@@ -1,0 +1,117 @@
+# Advanced Filtering Control from DarkRaven v.1.1
+# Settings for start filtrarion
+define kMaxPressureOutput 30000 # kpA
+define kTempStart -10 # C
+define kTempStop 30 # C
+define kRatioStart 0.1 # 0.01 = 1%, 0.1 = 10%
+define kRatioStop 0.01 # 0.01 = 1%, 0.1 = 10%
+define kHashName HASH("Pump Filtration O2")
+# DEVICES
+alias Slider d0 # optional
+alias OutGasTank d1 # optional
+define kHashPump -321403609
+# REGISTERS
+alias empty r15
+alias disable r14
+alias filterState r13
+alias typeGas r12
+move disable 0
+move empty 0
+CheckTypeGasOutput:
+move typeGas 0 # reset type
+s db Mode 1 # enable for one tick
+yield
+# Check Gas Output
+l r0 db RatioCarbonDioxideOutput
+breqz r0 2 # if r1 == 0 then +3 line
+move typeGas 1 # Co2
+l r0 db RatioNitrogenOutput
+breqz r0 2 # if r1 == 0 then +3 line
+move typeGas 2 # N2
+l r0 db RatioOxygenOutput
+breqz r0 2 # if r1 == 0 then +3 line
+move typeGas 3 # O2
+l r0 db RatioVolatilesOutput
+breqz r0 2 # if r1 == 0 then +3 line
+move typeGas 4 # H2
+l r0 db RatioNitrousOxideOutput
+breqz r0 2 # if r1 == 0 then +3 line
+move typeGas 5
+l r0 db RatioPollutantOutput
+breqz r0 2 # if r1 == 0 then +3 line
+move typeGas 6
+beqz typeGas CheckTypeGasOutput
+s db Open 0
+Initialisation:
+select r0 disable 0 1 # inverting signal
+brdns Slider 2
+s Slider Lock r0 # invert signal
+sbn kHashPump kHashName Setting 10
+sbn kHashPump kHashName Lock r0 # invert signal
+sbn kHashPump kHashName On 0
+s db Mode disable
+s db On r0 # invert signal
+beqz disable Main
+yield
+j 0 # simulate first start again
+Main:
+yield
+l disable db Open
+bnez disable Initialisation
+CheckFilters:
+ls r0 db 0 Occupied
+ls r1 db 1 Occupied
+add r2 r0 r1
+max r2 r2 1
+ls r0 db 0 Quantity
+ls r1 db 1 Quantity
+add r0 r0 r1 # summ, 0-200
+div r0 r0 r2 # x / count filters
+mul r0 r0 0.01 # x * 0.01
+slt r1 r0 0.2 # enable slider if < 20%
+SetSlider:
+brdns Slider 3 # skip if not connected
+s Slider Setting r0 # precent
+s Slider On r1 # enable/disable
+seqz empty r0 # 1 if x == 0
+PressureControl:
+move filterState 0 # first state
+brdns OutGasTank 3
+l r0 OutGasTank Pressure
+jr 2
+l r0 db PressureOutput
+# 1 if GasTank.Pressure < kMaxPresInGasTank
+bgt r0 kMaxPressureOutput SetFilter # EXIT
+# disable if warning == 1
+bnez empty SetFilter # EXIT
+# Check input temperature
+l r0 db TemperatureInput
+sub r0 r0 273.15
+# 1 if Temperature < Max Gas Temp
+bgt r0 kTempStop SetFilter # EXIT
+# 1 if Temperature > Min Gas Temp
+blt r0 kTempStart SetFilter # EXIT
+GetGasRatio:
+move r0 0
+brne typeGas 1 2
+l r0 db RatioCarbonDioxideInput
+brne typeGas 2 2
+l r0 db RatioNitrogenInput
+brne typeGas 3 2
+l r0 db RatioOxygenInput
+brne typeGas 4 2
+l r0 db RatioVolatilesInput
+brne typeGas 5 2
+l r0 db RatioNitrousOxideInput
+brne typeGas 6 2
+l r0 db RatioPollutantInput
+SelectState:
+l filterState db Mode
+select r1 filterState kRatioStop kRatioStart
+sgt filterState r0 r1
+SetFilter:
+s db Mode filterState
+select r0 filterState 0 1
+sleep r0
+sbn kHashPump kHashName On filterState
+j Main

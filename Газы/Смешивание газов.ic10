@@ -49,7 +49,7 @@ CkeckTanks:
 #move diff 1
 # Ckeck Fuel Pressure
 l r0 TankMix PrefabHash
-bne r0 1632165346 3
+brne r0 1632165346 3
 ls mixerOn TankMix 0 Occupied
 beqz mixerOn MixerPower
 
