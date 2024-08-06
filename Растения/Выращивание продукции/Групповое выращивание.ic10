@@ -1,0 +1,100 @@
+#Harvie 500 controller 11/Apr/2023   CowsAreEvil
+#Control up to 511 harvies on seperate cycles
+#Set veriables here to customise operation
+#Use Fertiliser Yes/No
+define kUSEPOOP 0 # 0(No) 1(Yes)
+define kUSEPLANT 1 # 0(No) 1(Yes)
+#Give the Harvie and Hydroponics tray the same name
+#Enter the names of the sets in the list here
+#Add as many as you want, end the list with "push 0"
+push HASH("Harvie Set 1")
+push 1600300 # Wheat
+push HASH("Harvie Set 2")
+push 1600200 # Potato
+push HASH("Harvie Set 3")
+push 0480300 # Tomato
+push HASH("Harvie Set 4")
+push 1600300 # Soybean
+#push HASH("Harvie Set 5")
+#push HASH("Harvie Set 6")
+#push HASH("Harvie Set 7")
+#push HASH("Harvie Set 8")
+#push HASH("Harvie Set 9")
+#push HASH("Harvie Set 10")
+#push HASH("Harvie Set 11")
+#push HASH("Harvie Set 12")
+push 0
+
+#Dont edit anything below here
+alias setname r15
+alias timeday r14
+alias timenigh r13
+alias getseed r12
+
+alias activate r9
+
+define kHARVIE 958056199
+define kTRAY -1841632400
+define kCONSOLE -815193061
+define kMEMORY -851746783
+define kGROWLIGHT -1758710260
+
+reset:
+move sp 0
+start:
+s db Setting sp
+add sp sp 1
+peek setname
+add sp sp 1
+peek r0
+beqz setname reset
+mod timenigh r0 1000
+sub r0 r0 timenigh
+mod timeday r0 1000000
+sub getseed r0 timeday
+div timeday timeday 1000
+div getseed getseed 1000000
+select getseed getseed 0 -1
+#sbn kHARVIE setname On 1
+yield
+
+checkdevice:
+lbns r0 kTRAY setname 0 Efficiency Average
+#sbn kCONSOLE setname On 1
+sbn kCONSOLE setname Mode 1
+sbn kCONSOLE setname Setting r0
+
+# GROW LIGHT
+lbn r0 kMEMORY setname Setting Average
+snan r1 r0
+bgtz r1 SkipGrowLight
+mul r1 0.5 4
+sub r0 r0 r1
+bgtz r0 SaveTime
+lbn r1 kGROWLIGHT setname On Maximum
+select r0 r1 timenigh timeday
+select r1 r1 0 1
+#lb r2 1076425094 Activate Maximum
+#bgt r1 r2 SkipGrowLight
+sbn kGROWLIGHT setname On r1
+SaveTime:
+sbn kMEMORY setname Setting r0
+SkipGrowLight:
+lbn activate kHARVIE setname Activate Minimum
+bnez activate start
+lbns r0 kTRAY setname 0 Mature Minimum
+beq r0 -1 plant
+bne r0 1 start
+lbns r0 kTRAY setname 0 Seeding Minimum
+blt r0 getseed start
+sbn kHARVIE setname Harvest 1
+j start
+
+plant:
+beqz kUSEPLANT start
+lbns r0 kHARVIE setname 0 Quantity Minimum
+beqz r0 start
+lbns r0 kTRAY setname 1 Quantity Minimum
+blt r0 kUSEPOOP start
+sbn kHARVIE setname Plant 1
+j start

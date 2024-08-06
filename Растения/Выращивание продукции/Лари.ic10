@@ -1,0 +1,121 @@
+# SETTINGS
+define pickupIndex 0 # number
+define pickupFertilizerIndex 1
+define dropIndex -1
+define kTIMENIGHT 300
+define kTIMELIGHT 600
+push HASH("T-13")
+push -13
+push HASH("T-12")
+push -12
+push HASH("T-11")
+push -11
+push HASH("T-10")
+push -10
+push HASH("T-9")
+push -9
+push HASH("T-8")
+push -8
+push HASH("T-7")
+push -7
+push HASH("T-6")
+push -6
+push HASH("T-5")
+push -5
+push HASH("T-4")
+push -4
+push HASH("T-3")
+push -3
+push HASH("T-2")
+push -2
+# DEVICES
+alias dLarry d0
+alias dSeed d1
+alias dDrop d2
+alias dFertilizer d3
+define trayHash HASH("StructureHydroponicsTrayData")
+define kGROWLIGHHASH -1758710260
+# REGISTERS
+alias rNameHash r0
+alias rTargetIndex r1
+alias rArmIdle r2
+alias rTakeFromIndex r3
+alias rPutAtIndex r4
+alias rStackEnd r5
+alias rCounter1 r9
+alias rGrowLight r10
+alias rTemp1 r6
+alias rTemp2 r7
+alias rTemp3 r8
+define stackStart 0
+define stackEnd 24
+
+add sp stackStart 1
+add rStackEnd stackEnd 2
+
+loop:
+yield
+peek rNameHash
+add sp sp 1
+peek rTargetIndex
+add sp sp 1
+brle sp rStackEnd 3
+move sp 1
+j loop
+Checking:
+jal GrowLightControl
+ls rTemp1 dDrop 0 Occupied
+select rTemp1 rTemp1 0 1
+s dDrop Open rTemp1
+s db Setting rTargetIndex
+lbns rTemp1 trayHash rNameHash 0 Occupied 1
+beq rTemp1 0 plant
+lbns rTemp1 trayHash rNameHash 0 Mature 1
+lbns rTemp2 trayHash rNameHash 0 Seeding 1
+add rTemp3 rTemp1 rTemp2
+bgt rTemp3 0 harvest
+lbns rTemp1 trayHash rNameHash 1 Occupied 1
+beq rTemp1 0 fertilize
+j loop
+fertilize:
+ls rTemp1 dFertilizer 0 Occupied
+beqz rTemp1 loop # exit if empty
+move rTakeFromIndex pickupFertilizerIndex
+move rPutAtIndex rTargetIndex
+j takeAndPut
+harvest:
+move rTakeFromIndex rTargetIndex
+move rPutAtIndex dropIndex
+j takeAndPut
+plant:
+ls rTemp1 dSeed 0 Occupied
+beqz rTemp1 loop # exit if empty
+move rTakeFromIndex pickupIndex
+move rPutAtIndex rTargetIndex
+j takeAndPut
+takeAndPut:
+s dLarry Setting rTakeFromIndex
+jal wait
+s dLarry Activate 1
+jal wait
+s dLarry Setting rPutAtIndex
+jal wait
+s dLarry Activate 1
+jal wait
+j Checking
+wait:
+yield
+l rArmIdle dLarry Idle
+breq rArmIdle 0 -2
+j ra
+GrowLightControl:
+lb rTemp1 kGROWLIGHHASH On Average
+breq rTemp1 rGrowLight 2 # skip reset
+    move rCounter1 0 # reset state
+# timer control
+brgtz rCounter1 4
+    select rCounter1 rGrowLight kTIMENIGHT kTIMELIGHT # new timer
+    select rGrowLight rGrowLight 0 1
+    sb kGROWLIGHHASH On rGrowLight
+sub rCounter1 rCounter1 0.5
+j ra
