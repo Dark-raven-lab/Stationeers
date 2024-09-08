@@ -1,0 +1,33 @@
+define kLockDevices 1
+define kMinMoles 1
+define kHotTemp 1500 #C
+
+alias Analyser d0
+alias PumpHot d1
+alias PumpWaste d2
+
+Start:
+s Analyser On 1
+s PumpHot On 0
+s PumpWaste On 0
+s Analyser Lock kLockDevices
+s PumpHot Lock kLockDevices
+s PumpWaste Lock kLockDevices
+Main:
+yield
+l r0 Analyser TotalMoles
+beq r0 -1 Start
+sgt r1 r0 kMinMoles
+l r0 Analyser Temperature
+sub r0 r0 273.15
+s db Setting r0
+sgt r2 r0 kHotTemp # >
+
+and r2 r1 r2
+s PumpHot On r2
+
+slt r2 r0 kHotTemp # <
+and r2 r1 r2
+s PumpWaste On r2
+
+j Main
