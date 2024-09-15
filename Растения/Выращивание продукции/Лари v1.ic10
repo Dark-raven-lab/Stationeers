@@ -1,55 +1,31 @@
 # SETTINGS
 define kIndexFertilizer 14
 define kIndexDrop 13
-define kWaitSeeds 1
-push HASH("T1") # 0
-push 1
+define kWaitSeeds 1 # 1 - wait seeds, 0 - not wait seeds
+push HASH("T1") # 1
 push HASH("T2") # 2
-push 2
-push HASH("T3") # 4
-push 3
-push HASH("T4") # 6
-push 4
-push HASH("T5") # 8
-push 5
-push HASH("T6") # 10
-push 6
-push HASH("T7") # 12
-push 7
-push HASH("T8") # 14
-push 8
-push HASH("T9") #16
-push 9
-push HASH("T10") #18
-push 10
-push HASH("T11") #20
-push 11
-push HASH("T12") #22
-push 12
-push HASH("T15") #24
-push 15
-push HASH("T16") #26
-push 16
-push HASH("T17") #28
-push 17
-push HASH("T18") #30
-push 18
-push HASH("T19") #32
-push 19
-push HASH("T20") #34
-push 20
-push HASH("T21") #36
-push 21
-push HASH("T22") #38
-push 22
-push HASH("T23") #40
-push 23
-push HASH("T24") #42
-push 24
-push HASH("T25") #44
-push 25
-push HASH("T26") #46
-push 26
+push HASH("T3") # 3
+push HASH("T4") # 4
+push HASH("T5") # 5
+push HASH("T6") # 6
+push HASH("T7") # 7
+push HASH("T8") # 8
+push HASH("T9") # 9
+push HASH("T10") # 10
+push HASH("T11") # 11
+push HASH("T12") # 12
+push HASH("T15") # 13
+push HASH("T16") # 14
+push HASH("T17") # 15
+push HASH("T18") # 16
+push HASH("T19") # 17
+push HASH("T20") # 18
+push HASH("T21") # 19
+push HASH("T22") # 20
+push HASH("T23") # 21
+push HASH("T24") # 22
+push HASH("T25") # 23
+push HASH("T26") # 24
 # DEVICES
 alias dLarry d0
 alias dDrop d1
@@ -61,12 +37,17 @@ alias rTargetIndex r13
 move r15 sp
 reset:
 move sp r15
-yield
 loop:
+yield
 beqz sp reset
-pop rTargetIndex
+move rTargetIndex sp
 pop rNameHash
-Checking:
+add rTargetIndex rTargetIndex 2 # correct count chutes
+brgt rTargetIndex kIndexFertilizer 2
+sub rTargetIndex rTargetIndex 1 # corecting
+brgt rTargetIndex kIndexDrop 2
+sub rTargetIndex rTargetIndex 1 # corecting
+checking:
 s db Setting rTargetIndex
 lbns r0 kTrayHash rNameHash 0 Mature 1
 lbns r1 kTrayHash rNameHash 0 Seeding 1
@@ -97,7 +78,7 @@ bgtz r0 plant
   jal wait
 plant:
 ls r0 dLarry 0 Occupied # check hands
-beqz r0 Checking # exit if hands empty
+beqz r0 checking # exit if hands empty
 s dLarry Setting rTargetIndex # move to tray
 jal wait
 s dLarry Activate 1 # planting seed or fertilizer
