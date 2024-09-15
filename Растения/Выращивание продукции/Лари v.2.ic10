@@ -1,0 +1,105 @@
+# SETTINGS
+define kIndexFertilizer 1
+define kIndexDrop -2
+# GROUPS
+push HASH("Group 1") # name group
+push -8 # start index
+push -3 # end index
+push HASH("Group 2")
+push -14
+push -9
+push HASH("Group 3")
+push 2
+push 6
+push HASH("Group 4")
+push 7
+push 11
+define kStackEnd 12 # End stack index
+# DEVICES
+alias dLarry d0
+alias dSeed d1
+alias dDrop d2
+alias dFertilizer d3
+define kTrayHash HASH("StructureHydroponicsTrayData")
+# REGISTERS
+alias rTargetIndex r15
+alias rStartIndex r14
+alias rNameHash r13
+alias rEndIndex r12
+alias rTempIndex r11
+alias rTrayCount r10
+reset:
+move sp kStackEnd
+loop:
+beqz sp reset
+pop rEndIndex
+pop rStartIndex
+pop rNameHash
+move rTargetIndex rStartIndex
+max r0 rStartIndex rEndIndex
+min r1 rStartIndex rEndIndex
+sub rTrayCount r0 r1
+yield
+Checking:
+lbns r0 kTrayHash rNameHash 0 Efficiency 0
+sbn -815193061 rNameHash Mode 1
+sbn -815193061 rNameHash Setting r0
+lbns r0 kTrayHash rNameHash 0 Mature 3
+lbns r1 kTrayHash rNameHash 0 Seeding 3
+add r0 r0 r1
+bgt r0 0 Harvest
+j loop
+Harvest:
+jal MoveToNextIndex
+ls r0 dLarry 255 Occupied
+beqz r0 Harvest # this tray is empty
+ls r0 dLarry 255 Mature
+ls r1 dLarry 255 Seeding
+add r0 r0 r1
+blez r0 Harvest # it is not ready
+ s dLarry Activate 1
+ jal Wait
+ ls r0 dLarry 255 Mature
+ brge r0 1 -3
+move rTempIndex rTargetIndex
+lbns r0 kTrayHash rNameHash 0 Occupied 1
+sub r0 rTrayCount r0 # the number of available
+ble r0 0 PutToDrop
+ move rTargetIndex rStartIndex
+ ls r0 dLarry 0 Occupied
+ beqz r0 Checking# checking empty hands
+  jal MoveToNextIndex
+  beq rTargetIndex rEndIndex PutToDrop
+   breq rTargetIndex rTempIndex -2
+   ls r0 dLarry 255 Occupied
+    brnez r0 -4 # next if Occupied
+    s dLarry Activate 1
+    jal Wait
+     brle rTargetIndex rEndIndex -7 # next index
+PutToDrop:
+s dLarry Setting kIndexDrop
+jal Wait
+s dLarry Activate 1
+jal Wait
+s dDrop Open 0
+ls r0 dLarry 0 Occupied
+beqz r0 Checking # dont seed
+s dLarry Setting rTempIndex
+move rTargetIndex rTempIndex
+jal Wait
+s dLarry Activate 1
+j Checking
+MoveToNextIndex:
+l r0 dLarry PositionX
+brne r0 rTargetIndex 3
+beq rTargetIndex rEndIndex ra # exit, if alredy on the last index
+add rTargetIndex rTargetIndex 1 # index++
+s dLarry Setting rTargetIndex # move
+Wait:
+sbn -53151617 HASH("LED Display (TargetIndex)") Color Color.Orange
+sbn -53151617 HASH("LED Display (TargetIndex)") Setting rTargetIndex # DEBUG
+yield
+l r0 dLarry Idle
+beqz r0 Wait # return if not idle
+sbn -53151617 HASH("LED Display (TargetIndex)") Color Color.Green
+j ra
