@@ -56,12 +56,11 @@ alias dDrop d1
 alias dFertilizer d2
 define kTrayHash HASH("StructureHydroponicsTrayData")
 # REGISTERS
-alias rNameHash r15
-alias rTargetIndex r14
-alias rStackEnd r13
-move rStackEnd sp
+alias rNameHash r14
+alias rTargetIndex r13
+move r15 sp
 reset:
-move sp rStackEnd
+move sp r15
 yield
 loop:
 beqz sp reset
