@@ -14,6 +14,7 @@ alias ID r11
 alias ReportValue r13
 alias AllowedHash r14
 s Sorter Mode 2
+s Stacker Setting 50
 l r0 LMStorageInternal Setting
 brnez r0 -1
 brnez ID 5
