@@ -1,12 +1,14 @@
 alias LMStorageInternal d0
 alias LMStorageResponse d3
 push HASH("Storage system - Iron")
-#push HASH("Storage system - Coal")
-#push HASH("Storage system - Copper")
+push HASH("Storage system - Coal")
+push HASH("Storage system - Copper")
 #push HASH("Storage system - Gold")
 #push HASH("Storage system - Silver")
 #push HASH("Storage system - Silicon")
 #push HASH("Storage system - Nickel")
+#push HASH("Storage system - Cobalt")
+#push HASH("Storage system - Lead")
 define kHashSDBStorage 1155865682
 define kHashSorter -1009150565
 define kHashStacker -2020231820 # Left -2020231820 / Right 1585641623
@@ -23,7 +25,7 @@ alias ID r11
 alias ReportValue r13
 alias AllowedHash r14
 move r15 sp
-#move ID 0 #!
+#move ID 0
 l r0 LMStorageInternal Setting
 brnez r0 -1
 brnez ID 5
@@ -34,16 +36,29 @@ sub ID ID 99
 s LMStorageResponse Setting 0
 s LMStorageInternal Setting 900
 reset:
-move sp r15
-NextStorage:
+yield
 s db Setting ID
+move sp r15
+move r3 ComValue
+l ComValue LMStorageInternal Setting
+jal Decompress
+brne Bvalue 3 2
+sbn kHashSDBStorage rNameHash Open 0
+move ReportValue 1
+beq Bvalue 1 MaxID
+breq Cvalue ID 2
+bnez Cvalue NextStorage #MessageIsForME:
+beq Bvalue 3 EjectItem
+beq ComValue r3 NextStorage # zero or repeat
+beq Bvalue 9 Report
+beq Bvalue 2 CountItem
+bne Cvalue ID NextStorage
+s LMStorageInternal Setting 0
+NextStorage:
 beqz sp reset
 pop rNameHash
-Start:
 lbn AllowedHash kHashLogicMemory rNameHash Setting Average
 beqz AllowedHash NextStorage
-yield
-SorterLogic:
 lbns r0 kHashSorter rNameHash 0 Occupied Maximum
 sbn kHashSorter rNameHash On r0
 beqz r0 StackerLogic
@@ -59,45 +74,30 @@ lbns r0 kHashStacker rNameHash 0 Occupied Maximum
 lbns r1 kHashStacker rNameHash 1 Occupied Maximum
 or r0 r0 r1
 sbn kHashStacker rNameHash On r0
-ComStart:
-move r3 ComValue
-l ComValue LMStorageInternal Setting
-jal Decompress
-brne Bvalue 3 2
-sbn kHashSDBStorage rNameHash Open 0
-move ReportValue 1
-beq Bvalue 1 MaxID
-breq Cvalue ID 2
-bnez Cvalue Start #MessageIsForME:
-beq Bvalue 3 EjectItem
-beq ComValue r3 NextStorage # zero or repeat
-beq Bvalue 9 Report
-beq Bvalue 2 CountItem
-bne Cvalue ID NextStorage
-s LMStorageInternal Setting 0
-j Start
+j NextStorage
 MaxID:
-bgt Cvalue ID Start
+bgt Cvalue ID NextStorage
 add r0 ID 100
 s LMStorageInternal Setting r0
-j Start
+j NextStorage
 EjectItem:
-lbn AllowedHash kHashLogicMemory rNameHash Setting 0
-bne Avalue AllowedHash Start
+move r12 NextStorage
+jal GetAllowedHash
 seqz r0 EjectFlag
 sbn kHashSDBStorage rNameHash Open r0
 add EjectFlag EjectFlag 1
 brlt EjectFlag 5 3 #Edit this number (not the 3)
 move EjectFlag 0
-j Start
-bne EjectFlag 2 Start
+j NextStorage
+bne EjectFlag 2 NextStorage
 lbns ReportValue kHashSDBStorage rNameHash 1 Quantity Maximum
 lbns r1 kHashSDBStorage rNameHash 1 OccupantHash Average
-bne r1 Avalue Start
+bne r1 Avalue NextStorage
 j Report
 CountItem:
+move r12 Report
+jal GetAllowedHash
 move EjectFlag 0
-bne Avalue AllowedHash Report #!!!!
 lbn r2 kHashSDBStorage rNameHash Quantity Maximum
 mul r2 kMaxStack r2
 mul r2 r2 100 # for repeat message
@@ -106,7 +106,7 @@ Report:
 l r0 LMStorageResponse Setting
 add ReportValue ReportValue r0
 s LMStorageResponse Setting ReportValue
-j Start
+j NextStorage
 Decompress:
 abs r1 ComValue
 mod Cvalue r1 100 # ID
@@ -117,4 +117,11 @@ div Bvalue Bvalue 100
 div Avalue Avalue 100000
 bgtz ComValue ra
 mul Avalue Avalue -1
+j ra
+GetAllowedHash:
+move sp r15
+beqz sp r12 # not found
+pop rNameHash
+lbn AllowedHash kHashLogicMemory rNameHash Setting Average
+brne AllowedHash Avalue -3
 j ra
