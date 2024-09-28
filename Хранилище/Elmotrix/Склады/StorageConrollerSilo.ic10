@@ -1,20 +1,20 @@
+define kMaxStack 50
 alias LMStorageInternal d0
 alias Sorter d1
 alias StorageUnit d2
 alias LMStorageResponse d3
 alias Stacker d4
-define MaxFillLimit 500
 alias EjectFlag r4 #ComMem r3
 alias Avalue r5
 alias Bvalue r6
 alias Cvalue r7
 alias ComValue r8
-alias MaxStack r10
 alias ID r11
 alias ReportValue r13
 alias AllowedHash r14
-s Sorter Mode 2
-s Stacker Setting 50
+s Stacker Setting kMaxStack
+s Stacker On 1
+s Sorter On 1
 l r0 LMStorageInternal Setting
 brnez r0 -1
 brnez ID 5
@@ -26,23 +26,6 @@ s LMStorageResponse Setting 0
 s LMStorageInternal Setting 900
 Start:
 s db Setting ID
-ls Avalue Sorter 0 OccupantHash
-snez r0 Avalue
-s Sorter On r0
-beqz Avalue SkipSorter
-seq r0 AllowedHash Avalue
-breqz r0 2
-ls MaxStack Sorter 0 MaxQuantity
-l r1 StorageUnit Quantity
-slt r1 r1 MaxFillLimit
-and r0 r0 r1
-s Sorter Output r0
-SkipSorter:
-bdns Stacker ComStart
-ls r0 Stacker 0 Occupied
-ls r1 Stacker 1 Occupied
-or r0 r0 r1
-s Stacker On r0
 ComStart:
 move r3 ComValue
 yield
@@ -59,8 +42,12 @@ beq ComValue r3 Start
 beq Bvalue 9 Report
 beq Bvalue 2 CountItem
 bne Cvalue ID Start
-brne Bvalue 4 2
+brne Bvalue 4 6
 move AllowedHash Avalue
+sll r0 AllowedHash 8 # Prefab Hash
+or r0 r0 SorterInstruction.FilterPrefabHashEquals
+s Sorter Mode 1
+put Sorter 0 r0
 s LMStorageInternal Setting 0
 j Start
 MaxID:
@@ -85,7 +72,7 @@ CountItem:
 move EjectFlag 0
 bne Avalue AllowedHash Report
 l r2 StorageUnit Quantity
-mul r2 MaxStack r2
+mul r2 kMaxStack r2
 mul r2 r2 100
 add ReportValue ReportValue r2
 Report:
