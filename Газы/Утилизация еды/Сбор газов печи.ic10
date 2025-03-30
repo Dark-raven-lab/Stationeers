@@ -1,0 +1,61 @@
+# SETTINGS
+define kLockDevices 1            # Lock state for devices: 1 - Locked, 0 - Unlocked
+define kPressureForStart 45000   # Pressure threshold to start the pump (in Pa)
+define kPressureForStop 1000     # Pressure threshold to stop the pump (in Pa)
+
+# DEVICES
+alias TankHP d0                  # High-pressure tank (Pipe Analyzer)
+alias PumpHP d1                  # High-pressure pump
+alias LedWarning d2              # LED indicator for warnings
+
+# REGISTERS
+alias rPressureInput r15
+alias rPumpState r14
+alias rCheckPressure r13
+alias rCheckVolaties r12
+
+Init:
+l r0 TankHP PrefabHash # Read PrefabHash device
+brne r0 435685051 3          # Skip initialization if TankHP is not a Pipe Analyzer
+s TankHP On 1                    # Turn on Pipe Analyzer
+s TankHP Lock kLockDevices       # Lock Pipe Analyzer
+s PumpHP On 0                    # Turn off the volume pump
+s PumpHP Setting 10              # Set the volume pump power level to 10
+s PumpHP Lock kLockDevices       # Lock the pump
+brdns LedWarning 3               # Skip initialization if LedWarning is not present
+s LedWarning On 0                # Turn off the LED indicator initially
+s LedWarning Lock kLockDevices   # Lock the LED indicator
+
+Loop:
+yield
+l rPumpState PumpHP On           # Load the current state of the pump (On/Off)
+l rPressureInput TankHP Pressure # Load the current pressure from the tank
+
+# Checking pressure for job
+select r0 rPumpState kPressureForStop kPressureForStart
+sge rCheckPressure rPressureInput r0
+
+# Checking ratio of volatiles for start job
+l r0 TankHP RatioVolatiles
+# check if ratio of volatiles = 1
+seq rCheckVolaties r0 1
+
+# Resolve pressure and ratio of volatiles
+and rPumpState rCheckPressure rCheckVolaties
+# Set pump state
+s PumpHP On rPumpState
+
+bdns LedWarning Loop
+# Set LedWarning color
+select r0 rPumpState Color.Green Color.Red
+s LedWarning Color r0
+
+# Turn on LedWarning if rCheckPressure is 1 but rCheckVolaties is 0
+seq r0 rCheckVolaties 0
+and r0 rCheckPressure r0
+# Set LedWarning state
+or r0 r0 rPumpState
+s LedWarning On r0
+
+
+j Loop

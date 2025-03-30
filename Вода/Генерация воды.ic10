@@ -1,86 +1,53 @@
-# Water tank
-define kMolesWater 500 # moles
-define kMaxTempWater 308 # Kelvin
-# Cooled Water Tank
-define kMaxMolesCooledWater 50 # moles
-define kMinTempCooledWater 740 # Kelvin
-# Hot Water
-define kMaxPresCombusterOut1 5000 # kPa
+define kPresOff 7000 # kPa
+define kPresOn 200 # kPa
+define kTemperatureGasWaste 100
+define kMinWater 250
 
-alias H2Combuster d0
-alias GasPump d1
-alias WaterTank d2
+# DEVICES
+alias Combuster db
+alias WaterSensor d0
+alias PumpWaste d1
 
-alias PumpHotWater d3
-alias TmpPumpC d4
-alias TmpTank d5
-
-alias temperature r15
-alias pressure r14
-alias moles r13
-
+Init:
+move r0 0
+s Combuster Open 0 # Closing
+s PumpWaste Setting 10
+s PumpWaste Lock 1
 Start:
-s GasPump Setting 100
-s GasPump Lock 1
-s PumpHotWater Setting 100
-s PumpHotWater Lock 1
-s TmpPumpC Setting 10
-s TmpPumpC Lock 1
+s Combuster Mode r0
+s PumpWaste On 0
+beqz r0 Main
+s PumpWaste Lock 0
+s Combuster On 0
+yield
+j Init # simulate first start again
 
 Main:
 yield
-# --- Inclusion fuel pressure condition
-l pressure H2Combuster PressureInput
-sgt r0 pressure 10
-beqz r0 ExitCombuster # exit if 0
+l r0 Combuster Open
+bnez r0 Start
 
-# --- Explosion protection
-l pressure H2Combuster PressureOutput
-slt r0 pressure kMaxPresCombusterOut1 # 1 if low
-beqz r0 ExitCombuster # exit if 0
+# LOGIC FOR START
+move r1 0 # state off
+l r0 WaterSensor VolumeOfLiquid
+bgt r0 kMinWater SetCombuster
 
-# --- Explosion protection
-l pressure H2Combuster PressureOutput2
-slt r0 pressure 45000 # 1 if low
-beqz r0 ExitCombuster # exit if 0
+# COMBUSTER LOGIC
+l r1 Combuster Mode
+select r2 r1 kPresOff kPresOn
+l r1 Combuster PressureOutput
+sle r1 r1 r2 # new state
+SetCombuster:
+s Combuster Mode r1
 
-ExitCombuster:
-s H2Combuster On r0
-
-# --- Control Pressure Hot Gas
-sge r0 pressure 40000
-s GasPump On r0
-
-# --- Inclusion 1 conditions
-l moles WaterTank TotalMoles
-slt r0 moles kMolesWater # 1 if low
-s TmpTank On r0
-yield
-beqz r0 ExitTmpTank # exit if 0
-# --- Inclusion 2 conditions
-l moles TmpTank TotalMoles
-sgt r0 moles 10 # 1 if > 10 mol
-beqz r0 ExitTmpTank # exit if 0
-# --- Inclusion 3 conditions
-l temperature WaterTank Temperature
-slt r0 temperature kMaxTempWater
-beqz r0 ExitTmpTank # exit if 0
-# --- Inclusion 4 conditions
-l temperature TmpTank Temperature
-slt r0 temperature kMinTempCooledWater
-ExitTmpTank:
-s TmpPumpC On r0
-
-# --- Control Hot Water Pressure
-select r0 r0 0 1 # Invert status
-beqz r0 ExitDropHotWater # exit if pump on
-# --- Inclusion moles conditions
-slt r0 moles kMaxMolesCooledWater # 1 if <
-beqz r0 ExitDropHotWater # exit if 0
-# --- Inclusion pressure conditions
-l pressure H2Combuster PressureOutput
-sgt r0 pressure 100
-ExitDropHotWater:
-s PumpHotWater On r0
-
+# Temperature
+l r0 Combuster TemperatureOutput
+sub r0 r0 273.15
+sle r0 r0 kTemperatureGasWaste
+# Pressure
+l r1 Combuster PressureOutput
+sge r1 r1 kPresOn
+# LOGIC
+and r0 r0 r1 # logic on/off
+s PumpWaste On r0
 j Main

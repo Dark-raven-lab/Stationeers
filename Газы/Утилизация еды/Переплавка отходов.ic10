@@ -1,0 +1,50 @@
+define kMaxReagentInCentrifuge 200
+
+alias Level d0
+alias Recyrcle d1
+alias Centrifuge d2
+alias Furnace d3
+alias AirFurnace d4
+
+alias rRecyrcleReagents r15
+alias rCentrifugeReagents r14
+alias rSmeltingAllowed r13
+
+Init:
+s AirFurnace Mode 1
+s AirFurnace Lock 1
+s AirFurnace PressureInternal 45000
+
+Main:
+yield
+l rSmeltingAllowed Level Open
+
+# CONTROL RECYRCLE
+ls r0 Recyrcle 0 Occupied
+l rRecyrcleReagents Recyrcle Reagents
+sge r1 rRecyrcleReagents 50
+or r0 r0 r1
+s Recyrcle On r0
+
+# CONTROL CENTRIFUGE
+l rCentrifugeReagents Centrifuge Reagents
+ls r0 Centrifuge 0 Occupied
+sge r1 rRecyrcleReagents 45
+or r0 r0 r1
+s Centrifuge On r0
+
+l r0 Centrifuge Open
+select r1 r0 1 kMaxReagentInCentrifuge
+sge r0 rCentrifugeReagents r1
+s Centrifuge Open r0
+
+# CONTROL FURNACE
+ls r0 Furnace 0 Occupied
+ls r1 Furnace 1 Occupied
+max r0 r0 r1
+and r0 r0 rSmeltingAllowed
+s Furnace On r0
+s AirFurnace On r0
+s Furnace Activate r0
+yield
+j Main
