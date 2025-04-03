@@ -1,54 +1,42 @@
 # SETTINGS
-define kIndexFertilizer 14
-define kIndexDrop 13
+define kIndexFertilizer 13
+define kIndexDrop 12
 define kWaitSeeds 1 # 1 - wait seeds, 0 - not wait seeds
-push HASH("T1") # 1
-push HASH("T2") # 2
-push HASH("T3") # 3
-push HASH("T4") # 4
-push HASH("T5") # 5
-push HASH("T6") # 6
-push HASH("T7") # 7
-push HASH("T8") # 8
-push HASH("T9") # 9
-push HASH("T10") # 10
-push HASH("T11") # 11
-push HASH("T12") # 12
-push HASH("T15") # 13
-push HASH("T16") # 14
-push HASH("T17") # 15
-push HASH("T18") # 16
-push HASH("T19") # 17
-push HASH("T20") # 18
-push HASH("T21") # 19
-push HASH("T22") # 20
-push HASH("T23") # 21
-push HASH("T24") # 22
-push HASH("T25") # 23
-push HASH("T26") # 24
 # DEVICES
 alias dLarry d0
 alias dDrop d1
 alias dFertilizer d2
-define kTrayHash HASH("StructureHydroponicsTrayData")
+define kTrayHash -1841632400
 # REGISTERS
 alias rNameHash r14
 alias rTargetIndex r13
+Init:
+jal Setup
 move r15 sp
+sbn -815193061 HASH("LED Display (MaxIndex)") Setting r15
 reset:
 move sp r15
 loop:
-yield
+sbn -815193061 HASH("LED Display (SettingIndex)") On 0 # DEBUG
 beqz sp reset
-move rTargetIndex sp
+yield
 pop rNameHash
+sub rTargetIndex r15 sp # set rTargetIndex
 add rTargetIndex rTargetIndex 2 # correct count chutes
 brgt rTargetIndex kIndexFertilizer 2
 sub rTargetIndex rTargetIndex 1 # corecting
 brgt rTargetIndex kIndexDrop 2
 sub rTargetIndex rTargetIndex 1 # corecting
-checking:
+sbn -815193061 HASH("LED Display (TargetIndex)") Setting rTargetIndex # DEBUG
 s db Setting rTargetIndex
+checking:
+lbn r0 kTrayHash rNameHash PrefabHash 1
+seqz r0 r0
+select r1 r0 Color.Red Color.Orange
+lbns r0 kTrayHash rNameHash 0 Occupied 1
+select r1 r0 Color.Green r1
+sbn -815193061 HASH("LED Display (TargetIndex)") Color r1
+beqz r0 loop
 lbns r0 kTrayHash rNameHash 0 Mature 1
 lbns r1 kTrayHash rNameHash 0 Seeding 1
 select r1 kWaitSeeds r1 0
@@ -56,16 +44,15 @@ add r2 r0 r1
 bgt r2 0 harvest
 j loop
 harvest:
+sbn -815193061 HASH("LED Display (SettingIndex)") On 1 # DEBUG
 s dLarry Setting rTargetIndex
-jal wait
- s dLarry Activate 1
- jal wait
- lbns r0 kTrayHash rNameHash 0 Mature 1
- brge r0 0 -3 # collect everything
+jal Wait
+jal ActivateLarry
+lbns r0 kTrayHash rNameHash 0 Mature 1
+brge r0 0 -2 # collect everything
 s dLarry Setting kIndexDrop
-jal wait
-s dLarry Activate 1 # DROP
-jal wait
+jal Wait
+jal ActivateLarry # DROP
 s dDrop Open 0
 fertilizer:
 lbns r0 kTrayHash rNameHash 1 Occupied 1 # fertilizer in tray
@@ -73,21 +60,42 @@ bgtz r0 plant
  ls r0 dFertilizer 0 Occupied # check fertilizers
  beqz r0 plant # no fertilizers
   s dLarry Setting kIndexFertilizer
-  jal wait
-  s dLarry Activate 1 # take fertilizer
-  jal wait
+  jal Wait
+  jal ActivateLarry # take fertilizer
 plant:
 ls r0 dLarry 0 Occupied # check hands
-beqz r0 checking # exit if hands empty
+beqz r0 reset # exit if hands empty
 s dLarry Setting rTargetIndex # move to tray
-jal wait
-s dLarry Activate 1 # planting seed or fertilizer
-jal wait
+jal Wait
+jal ActivateLarry # planting seed or fertilizer
 ls r0 dLarry 0 Occupied
-brnez r0 -3 # repeat planting seed or fertilizer
+brnez r0 -2 # repeat planting seed or fertilizer
 j fertilizer
-wait:
+ActivateLarry:
+s dLarry Activate 1
+Wait:
 yield
+l r0 dLarry Setting
+sbn -815193061 HASH("LED Display (SettingIndex)") Setting r0 # DEBUG
 l r0 dLarry Idle
-breqz r0 -2
+beqz r0 Wait # return if not idle
+j ra
+
+Setup:
+push HASH("T18")
+push HASH("T17")
+push HASH("T16")
+push HASH("T15")
+push HASH("T14")
+push HASH("T11")
+push HASH("T10")
+push HASH("T9")
+push HASH("T8")
+push HASH("T7")
+push HASH("T6")
+push HASH("T5")
+push HASH("T4")
+push HASH("T3")
+push HASH("T2")
+push HASH("T1")
 j ra

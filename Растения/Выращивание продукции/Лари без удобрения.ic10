@@ -1,0 +1,75 @@
+# SETTINGS
+define kMaxIndex 26
+define kIndexDrop 21
+define kIdleTime 30 # seconds
+define kWaitSeeds 1
+# DEVICES
+alias dLarry d0
+alias dDrop d1
+# REGISTERS
+alias rTargetIndex r15
+alias rMaxIndex r9
+alias rCurrentTime r8
+StartPosition:
+move rCurrentTime kIdleTime
+move rTargetIndex kIndexDrop
+s dLarry Setting rTargetIndex
+jal WaitLarRy
+yield
+sub rCurrentTime rCurrentTime 0.5
+sbn -815193061 HASH("LED Display (WaitTimer)") Setting rCurrentTime
+brgtz rCurrentTime -3
+MoveNextIndex:
+sge r0 rTargetIndex kMaxIndex # Checking maximum
+select rTargetIndex r0 0 rTargetIndex # Reset index if exit beyond the array boundary
+add rTargetIndex rTargetIndex 1 # Set next index
+MoveIndex:
+s dLarry Setting rTargetIndex
+jal WaitLarRy
+l r0 dLarry PositionX
+bne r0 rTargetIndex MoveNextIndex
+beq r0 kIndexDrop StartPosition
+l r0 dLarry TargetSlotIndex
+beq r0 -1 MoveNextIndex
+CheckingTray:
+ls r0 dLarry 255 Occupied
+beqz r0 MoveNextIndex # Skip if empty (seed ?)
+ls r0 dLarry 255 Health
+brgtz r0 3 # Skip it if it's healthy
+jal ActivateLarRy # Delete if it is dead
+j CheckingTray
+
+CheckHarvest:
+ls r0 dLarry 255 Mature
+ls r1 dLarry 255 Seeding
+select r1 kWaitSeeds r1 0
+add r0 r0 r1
+ble r0 0 CheckingHand
+jal ActivateLarRy # Harvesting
+j CheckHarvest # Repeat
+
+CheckingHand:
+ls r0 dLarry 0 Occupied
+beqz r0 MoveNextIndex # Empty
+s dLarry Setting kIndexDrop
+jal WaitLarRy
+jal ActivateLarRy # DROP
+s dDrop Open 0
+ls r0 dLarry 0 Occupied
+beqz r0 MoveNextIndex # Empty
+s dLarry Setting rTargetIndex
+jal WaitLarRy
+jal ActivateLarRy # Add seed
+j MoveNextIndex
+
+
+ActivateLarRy:
+s dLarry Activate 1
+WaitLarRy:
+sbn -815193061 HASH("LED Display (TargetIndex)") Setting rTargetIndex # DEBUG
+l r0 dLarry Setting
+sbn -815193061 HASH("LED Display (SettingIndex)") Setting r0 # DEBUG
+yield
+l r0 dLarry Idle
+beqz r0 WaitLarRy # return if not idle
+j ra
