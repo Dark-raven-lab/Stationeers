@@ -1,125 +1,120 @@
-define kAccuracyPressure 10
-# CONSTANTS ALL DEVICES
-define kGASSENSOR -1252983604
-define kBUTTON 491845673
-define kSLIDER 576516101
-define kALARMLAMP -1535893860
-define kSENSOR -1713470563
-# DEVICES
+# SETTINGS
+define kAccuracyPressure 0.9 # Early opening ratio
+define kExceedingPressure 1.1 # AirVent pressure increase coefficient
+define kSkipInternalPressurization 0 # Skip pressurization stage
+define kSkipExternalPressurization 0 # Skip pressurization stage
+# REQUIRED DEVICES
 alias DoorInt d0
-alias VentInt d1
-alias MainkButton d2
-alias DoorExt d3
-alias VentExt d4
-alias Lamp d5
+alias DoorExt d1
+alias Lamp d2 # OPTIONAL
+define kGasSensor -1252983604 # GAS SENSORS
+define kToggleButton 491845673 # TOGGLE BUTTONS
+define kSlider 576516101 # LED SLIDERS (for state pressure and skip stage)
+define kHashAirVent -1129453144 # AIR VENTS
+# NAMES
+define kHashNameVentExt HASH("Ext.Active Vent")
+define kHashNameVentInt HASH("Int.Active Vent")
+# OPRIONAL DEVICES
+define kFlickerLamp -1535893860 # FLICKERS LAMP
+define kSpeaker -828056979
 # REGISTERS
 alias pressInt r15
 alias pressExt r14
-alias curPress r13
-alias pressOut r12
-alias initialPressure r11
-alias airlookState r10
-alias sensorWorked r9
+alias pressOut r13
+alias airlookState r12
+alias rFrontAirHashName r10
+alias rBackAirHashName r9
+alias rEnable r8
 
-Init: # ONCE
-l r0 DoorInt Open
-select airlookState r0 1 0
-select r1 r0 0 1
-s DoorExt Open r1
-move sensorWorked 1
+Init:
+s DoorInt Mode 0 # Set logic mode
+s DoorExt Mode 0 # Set logic mode
+l airlookState DoorInt Open
+select r0 airlookState 0 1
+s DoorExt Open r0
+s DoorInt On airlookState
+sb kSlider On 0
 
-Main: # CYRCLE
+Loop:
 yield
-# Update sensors
-lb r1 kSENSOR Activate Maximum
-select r0 sensorWorked 0 r1
-move sensorWorked r1
-bgtz r0 Start
-
-#Update buttons
-lb r0 kBUTTON Activate Maximum
-beqz r0 Main
-
-Start:
-select airlookState airlookState 0 1
 s db Setting airlookState
-sb kALARMLAMP On 1
-brdns Lamp 2 # enable lamp if connected
-s Lamp On 1
 
-beq airlookState 0 GoExt
+lb rEnable kToggleButton Activate Maximum
+beqz rEnable Loop
+AirlockCheckState:
+beq airlookState 0 GoToInt
 
-GoInt:
-lb pressInt kGASSENSOR Pressure Maximum # Save
+GoToExt:
+lb pressInt kGasSensor Pressure Maximum # Save
+select pressInt kSkipInternalPressurization 0 pressInt
 move pressOut pressExt
-alias DoorBack d3
+alias DoorBack d1
 alias DoorFront d0
-alias VentBack d4
-alias VentFront d1
-j CloseDoor
-
-GoExt:
-lb pressExt kGASSENSOR Pressure Maximum # Save
+move rFrontAirHashName kHashNameAirVentExt
+move rBackAirHashName kHashNameAirVentInt
+j AirlockStart
+GoToInt:
+lb pressExt kGasSensor Pressure Maximum # Save pressure
+select pressExt kSkipExternalPressurization 0 pressExt
 move pressOut pressInt
 alias DoorBack d0
-alias DoorFront d3
-alias VentBack d1
-alias VentFront d4
-
-CloseDoor:
-yield
-sb kSLIDER On 1
-sb kSLIDER Lock 1
-s DoorBack On 1 # enable door in
-s DoorBack Open 0 # closed door in
-l r0 DoorBack Open # check status door in
-bnez r0 CloseDoor # if != closed retern
-s DoorBack On 0 # disable door in
-
-StartDepressure:
-lb initialPressure kGASSENSOR Pressure Maximum
-s VentBack Lock 1
-s VentBack Mode 1 # set mode depressure
-s VentBack On 1 # START DEPRESSURE
-s VentFront Lock 1
-s VentFront On 0
-
+alias DoorFront d1
+move rFrontAirHashName kHashNameAirVentInt
+move rBackAirHashName kHashNameAirVentExt
+AirlockStart:
+s DoorBack Open 0
+sleep 0.5
+s DoorBack On 0
+jal ToggleDevices
+jal AirlockCycle
+s DoorFront On 1
+s DoorFront Open 1
+j Loop
+AirlockCycle:
+lb r1 kGasSensor Pressure Maximum
+sbn kPrefHashAirVent rBackAirHashName Lock 1 # Lock air vent
+sbn kPrefHashAirVent rFrontAirHashName Lock 1 # Lock air vent
+sbn kPrefHashAirVent rBackAirHashName Mode 1 # set mode depressure
+sbn kPrefHashAirVent rBackAirHashName On 1 # START DEPRESSURE
 WaitDepressure:
 yield
-l r0 MainkButton Activate # check skip stage
-bgtz r0 Pressurization # If out want open-go next
-lb curPress kGASSENSOR Pressure Maximum # check pressure
-div r0 curPress initialPressure
-sb kSLIDER Setting r0
-bgtz curPress WaitDepressure # if press != 0 retern
-
+lb r0 kSlider On Minimum # check skip stage
+beqz r0 Pressurization # If out want open-go next
+lb r2 kGasSensor Pressure Maximum # check pressure
+div r0 r2 r1
+sb kSlider Setting r0
+bgtz r2 WaitDepressure # if press != 0 retern
 Pressurization:
 yield
-s VentBack On 0 # STOP DEPRESSURE
-s VentFront Mode 0 # First!
-s VentFront PressureExternal pressOut
-s VentFront On 1
-s DoorFront On 1
-
+sb kSlider On 1
+sbn kPrefHashAirVent rBackAirHashName On 0 # STOP DEPRESSURE
+sbn kPrefHashAirVent rFrontAirHashName Mode 0 # First!
+sbn kPrefHashAirVent rFrontAirHashName On 1
+#s DoorFront On 1
 WaitPressurization:
 yield
-l r0 MainkButton Activate # check skip stage
-bgtz r0 OpenDoor # If door out was open - exit
-lb curPress kGASSENSOR Pressure Maximum
-sub r1 pressOut kAccuracyPressure # Need pressure
-div r0 curPress r1
-sb kSLIDER Setting r0
-blt curPress r1 WaitPressurization
-
-OpenDoor:
-s VentFront On 0
-s VentFront Lock 0
-s VentBack Lock 0
-s DoorFront Open 1
-yield
-sb kSLIDER On 0
-sb kSLIDER Lock 0
-sb kALARMLAMP On 0
-bdns Lamp Main # disable lamp if connected
-s Lamp On 0
-j Main
+mul r0 pressOut kExceedingPressure # Boost pressure
+sbn kPrefHashAirVent rFrontAirHashName PressureExternal r0
+lb r0 kSlider On Minimum # check skip stage
+beqz r0 StopPressurization # If door out was open - exit
+lb r2 kGasSensor Pressure Minimum
+mul r1 pressOut kAccuracyPressure # Wait pressure
+div r0 r2 r1
+sb kSlider Setting r0
+blt r2 r1 WaitPressurization
+StopPressurization:
+select airlookState airlookState 0 1
+sbn kPrefHashAirVent rFrontAirHashName On 0 # STOP PRESSURIZATION
+sbn kPrefHashAirVent rFrontAirHashName Lock 0 # Unlock air vent
+sbn kPrefHashAirVent rBackAirHashName Lock 0 # Unlock air vent
+move rEnable 0
+ToggleDevices:
+sb kFlickerLamp On rEnable
+sb kSlider On rEnable
+brdns Lamp 2 # enable lamp if connected
+s Lamp On rEnable
+or r0 rEnable airlookState
+sb kSpeaker On r0
+select r0 airlookState 25 9
+sb kSpeaker Mode r0
+j ra

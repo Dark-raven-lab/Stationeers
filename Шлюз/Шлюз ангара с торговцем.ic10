@@ -1,29 +1,28 @@
 # SETTINGS
-define kAccuracyPressure 5 # Boost pressure
-
-# !!! REQUIRED DEVICES !!!
-define kGasSensor -1252983604
-define kToggleButton 491845673
-define kSlider 576516101
-define kPrefHashHangarDoor -1351081801
-define kPrefHashAirVent -785498334
+define kAccuracyPressure 0.9 # Early opening ratio
+define kExceedingPressure 1.1 # AirVent pressure increase coefficient
+define kSkipInternalPressurization 0 # Skip pressurization stage
+define kSkipExternalPressurization 1 # Skip pressurization stage
+# REQUIRED DEVICES
+alias DoorInt d0
+define kGasSensor -1252983604 # GAS SENSORS
+define kToggleButton 491845673 # TOGGLE BUTTONS
+define kSlider 576516101 # LED SLIDERS (for state pressure and skip stage)
+define kPrefHashHangarDoor -1351081801 # HANGAR DOORS
+define kPrefHashAirVent -785498334 # LARGE AIR VENTS
+# NAMES
 define kHashNameAirVentInt HASH("Air Vent Internal")
 define kHashNameAirVentExt HASH("Air Vent External")
-alias DoorInt d0
-
 # OPTIONAL DEVICES
 define kFlickerLamp -1535893860
 define kSpeaker -828056979
-
 # REGISTERS
 alias pressInt r15
 alias pressExt r14
-alias curPress r13
-alias pressOut r12
-alias initialPressure r11
-alias airlookState r10 # 1 - internal state, 0 - external state
-alias rFrontAirHashName r9
-alias rBackAirHashName r8
+alias pressOut r13
+alias airlookState r12 # 1 - internal state, 0 - external state
+alias rFrontAirHashName r11
+alias rBackAirHashName r10
 
 Init:
 l airlookState DoorInt Open
@@ -31,7 +30,6 @@ select r0 airlookState 0 1
 sb kPrefHashHangarDoor Open r0
 s DoorInt Mode 0 # Set logic mode
 s DoorInt On airlookState
-sb kPrefHashAirVent Lock 1 # Lock air vent
 sb kSlider On 0
 
 Main:
@@ -39,7 +37,7 @@ yield
 s db Setting airlookState
 lb r0 kToggleButton Activate Maximum
 beqz r0 Main
-
+# start airlock
 sb kFlickerLamp On 1
 sb kSlider On 1
 sb kSpeaker On 1
@@ -49,12 +47,14 @@ beq airlookState 0 GoToInt
 
 GoToExt:
 lb pressInt kGasSensor Pressure Maximum # save internal pressure
+select pressInt kSkipInternalPressurization 0 pressInt
 move pressOut pressExt
 move rFrontAirHashName kHashNameAirVentExt
 move rBackAirHashName kHashNameAirVentInt
 s DoorInt Open 0
+sleep 0.5
 s DoorInt On 0
-jal Start
+jal AirlockStart
 sb kPrefHashHangarDoor On 1
 sb kPrefHashHangarDoor Open 1
 yield
@@ -62,8 +62,8 @@ sb kPrefHashHangarDoor On 0 # High energy consumption
 j Main
 
 GoToInt:
-#lb pressExt kGasSensor Pressure Maximum
-move pressExt 0
+lb pressExt kGasSensor Pressure Maximum
+select pressExt kSkipExternalPressurization 0 pressExt
 move pressOut pressInt
 move rFrontAirHashName kHashNameAirVentInt
 move rBackAirHashName kHashNameAirVentExt
@@ -71,15 +71,16 @@ sb kPrefHashHangarDoor On 1
 sb kPrefHashHangarDoor Open 0
 sleep 1
 sb kPrefHashHangarDoor On 0
-jal Start
+jal AirlockStart
 sb kSpeaker Mode 25
 s DoorInt On 1
 s DoorInt Open 1
 j Main
 
-Start:
-yield
-lb initialPressure kGasSensor Pressure Maximum
+AirlockStart:
+lb r1 kGasSensor Pressure Maximum
+sbn kPrefHashAirVent rBackAirHashName Lock 1 # Lock air vent
+sbn kPrefHashAirVent rFrontAirHashName Lock 1 # Lock air vent
 sbn kPrefHashAirVent rBackAirHashName Mode 1 # set mode depressure
 sbn kPrefHashAirVent rBackAirHashName On 1 # START DEPRESSURE
 sb kSpeaker Mode 20
@@ -87,10 +88,10 @@ WaitDepressure:
 yield
 lb r0 kSlider On Minimum # check skip stage
 beqz r0 Pressurization # If out want open-go next
-lb curPress kGasSensor Pressure Maximum # check pressure
-div r0 curPress initialPressure
+lb r2 kGasSensor Pressure Maximum # check pressure
+div r0 r2 r1
 sb kSlider Setting r0
-bgtz curPress WaitDepressure # if press != 0 return
+bgtz r2 WaitDepressure # if press != 0 return
 Pressurization:
 yield
 sb kSlider On 1
@@ -100,16 +101,15 @@ sbn kPrefHashAirVent rFrontAirHashName On 1
 sb kSpeaker Mode 21
 WaitPressurization:
 yield
-add r0 pressOut kAccuracyPressure # Need pressure
-s db Setting r0
+mul r0 pressOut kExceedingPressure # Boost pressure
 sbn kPrefHashAirVent rFrontAirHashName PressureExternal r0
 lb r0 kSlider On Minimum # check skip stage
 beqz r0 StopPressurization # If door out was open - exit
-lb curPress kGasSensor Pressure Minimum
-div r0 curPress pressOut
+lb r2 kGasSensor Pressure Minimum
+mul r1 pressOut kAccuracyPressure # Wait pressure
+div r0 r2 r1
 sb kSlider Setting r0
-blt curPress pressOut WaitPressurization
-
+blt r2 r1 WaitPressurization
 StopPressurization:
 select airlookState airlookState 0 1
 sbn kPrefHashAirVent rFrontAirHashName On 0
