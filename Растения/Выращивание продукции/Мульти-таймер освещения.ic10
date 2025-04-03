@@ -1,0 +1,57 @@
+# SETTINGS
+define kHashGrowlight -1758710260
+define kHashDisplay -815193061
+# REGISTERS
+alias rMaxStack r13
+alias rDayTime r12
+alias rNightTime r11
+alias rTime r10
+alias rName r9
+alias rLightState r8
+Init:
+jal SetGroups
+move rMaxStack sp
+div r0 rMaxStack 5
+s db Setting r0
+Reset:
+move sp rMaxStack
+yield
+yield
+ReadStack:
+beqz sp Reset
+pop rLightState # 4
+pop rTime # 3
+pop rDayTime # 2
+pop rNightTime # 1
+pop rName # 0
+Loop:
+lbn r0 kHashGrowlight rName On Average
+breq r0 rLightState 2 # skip reset
+move rTime 0 # reset state
+TimerControl:
+bgtz rTime TimerUpdate
+select rTime rLightState rNightTime rDayTime # new timer
+seqz rLightState rLightState
+sbn kHashGrowlight rName On rLightState
+TimerUpdate:
+sub rTime rTime 1
+add sp sp 3 # 0 -> 3
+push rTime # -> 4
+push rLightState # -> 5
+sub sp sp 5 # 5 -> 0
+sbn kHashDisplay rName Setting rTime
+j ReadStack
+
+# GROUPS GROULIGHT CONTROL
+SetGroups:
+# 1
+push HASH("Grow Light 1") # Name
+push 200 # Secongds dark
+push 300 # Secongds light
+add sp sp 2 # Timer and last state
+# 2
+push HASH("Grow Light 2") # Name
+push 200 # Time dark
+push 500 # Time light
+add sp sp 2 # Timer and last state
+j ra

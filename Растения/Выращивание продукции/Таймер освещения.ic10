@@ -1,0 +1,24 @@
+# SETTINGS
+define kTIMENIGHT 300
+define kTIMELIGHT 600
+define kGROWLIGHHASH -1758710260
+# REGISTERS
+alias rGrowLight r15
+alias rCounter r14
+alias rEnabled r13
+Init:
+move rCounter 0
+loop:
+yield
+yield
+lb r0 kGROWLIGHHASH On Average
+breq r0 rGrowLight 2 # skip reset
+    move rCounter 0 # reset state
+# timer control
+brgtz rCounter 4
+    select rCounter rGrowLight kTIMENIGHT kTIMELIGHT # new timer
+    seqz rGrowLight rGrowLight # 1 if = 0
+    sb kGROWLIGHHASH On rGrowLight
+sub rCounter rCounter 1
+s db Setting rCounter
+j loop
