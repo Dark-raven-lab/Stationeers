@@ -49,11 +49,16 @@ s dLarry Setting rTargetIndex
 jal Wait
 jal ActivateLarry
 lbns r0 kTrayHash rNameHash 0 Mature 1
-brge r0 0 -2 # collect everything
+brgtz r0 -2
+DropPlant:
 s dLarry Setting kIndexDrop
 jal Wait
-jal ActivateLarry # DROP
+jal ActivateLarry # DROP PLANT
 s dDrop Open 0
+ls r0 dLarry 0 Occupied # check hands
+lbns r1 kTrayHash rNameHash 0 Occupied 1
+and r0 r0 r1
+beq r0 1 DropPlant # DROP SEED
 fertilizer:
 lbns r0 kTrayHash rNameHash 1 Occupied 1 # fertilizer in tray
 bgtz r0 plant
