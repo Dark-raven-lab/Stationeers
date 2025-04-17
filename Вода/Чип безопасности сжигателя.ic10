@@ -3,6 +3,7 @@ define kGasPressureOutputMax 45000    # kPa
 # DEVICES
 alias Combuster db
 alias LedState d0
+alias RegPres d1
 
 # REGISTERS
 alias rLowFuel r15
@@ -27,23 +28,27 @@ bnez r0 Start
 InputControl:
 l r0 Combuster PressureInput
 slez rLowFuel r0
+
+l r1 RegPres Setting
+slt r1 r0 r1
+s RegPres On r1
 l rMode Combuster Mode
-and r2 r0 rMode
-beq r2 1 OutputControl
+and r0 rLowFuel rMode
+beq r0 0 OutputControl
 s Combuster Mode 0              # Disabled if fuel is empty
 
 OutputControl:
 # Disabled if pressure is too high!
-l r1 Combuster PressureOutput
-sge rHighPressure r1 kGasPressureOutputMax
+l r0 Combuster PressureOutput
+sge rHighPressure r0 kGasPressureOutputMax
 
 Notification:
 bdns LedState EmergencyControl
 select r1 rMode Color.Green Color.Orange
-max r2 rLowFuel rHighPressure
+#max r2 rLowFuel rHighPressure
 select r1 r2 Color.Red r1
 s LedState Color r1
-s LedState On r2
+s LedState On 1
 
 EmergencyControl:
 beqz rHighPressure Main

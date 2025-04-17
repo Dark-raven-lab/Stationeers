@@ -1,0 +1,78 @@
+define kLockDevices 1
+define kLiquidMax 0.1 # Liters
+define kPressureWaterMax 4500 # Hot water pipe pressure monitoring
+# Cooler settings
+define kMaxHotLiquidTemp 175 # C
+define kMaxLiquidTemp 30 # c
+# === END SETTINGS ===
+alias HotSensor d0
+alias HotPump d1
+alias HotPurge d2
+alias CoolerSensor d3
+alias CoolerPump d4
+
+alias rToxin r15
+alias rMaxCoolerVolume r14
+alias rMaxHotVolume r14
+
+Init:
+s HotSensor On 1
+s HotSensor Lock kLockDevices
+s HotPump On 0
+s HotPump Setting 10
+s HotPump Lock kLockDevices
+brdns CoolerSensor 3
+s CoolerSensor On 1
+s CoolerSensor Lock kLockDevices
+brdns CoolerPump 4
+s CoolerPump On 0
+s CoolerPump Setting 10
+s CoolerPump Lock kLockDevices
+
+Loop:
+yield
+
+# Pressure control hot water
+bdns HotPurge SkipHotPurge
+s HotPurge Setting kPressureWaterMax
+l r0 HotSensor Pressure
+sgt r1 r0 kPressureWaterMax # Pressure high!
+l r0 HotSensor RatioLiquidPollutant
+sgtz rToxin r0 # Liquid pollutant detected!
+or r0 r1 rToxin
+s HotPurge On r0
+SkipHotPurge:
+
+# Liquid hot control
+# Check volume in cooler
+l r0 CoolerSensor Volume # Max liquid volume
+mul r1 r0 0.8 # 80%
+l r0 CoolerSensor VolumeOfLiquid
+sge rMaxCoolerVolume r0 r1 # Warning! Max volume liquid in pipe!
+# Check high volume
+l r0 HotSensor Volume
+mul r1 r0 0.8 # 80%
+l r0 HotSensor VolumeOfLiquid
+sge rMaxHotVolume r0 r1 # Warning! Max volume liquid in pipe!
+# Check hot liquid and temperature
+sgt r1 r0 kLiquidMax # 1 if high
+l r0 HotSensor Temperature
+sub r0 r0 273.15
+sle r0 r0 kMaxHotLiquidTemp # 1 if temp OK
+# Rules
+and r1 r0 r1 # Rules enable
+or r1 r1 rMaxHotVolume
+or r0 rToxin rMaxCoolerVolume # Rules disable
+select r0 r0 0 r1
+s HotPump On r0 # in cooler
+
+# Liquid cooling control
+l r0 CoolerSensor VolumeOfLiquid
+sge r1 r0 kLiquidMax # 1 if moles high
+l r0 CoolerSensor Temperature
+sub r0 r0 273.15
+sle r0 r0 kMaxLiquidTemp # 1 if temp OK
+and r0 r0 r1
+s CoolerPump On r0
+
+j Loop

@@ -1,53 +1,120 @@
-define kPresOff 7000 # kPa
-define kPresOn 200 # kPa
-define kTemperatureGasWaste 100
-define kMinWater 250
-
-# DEVICES
-alias Combuster db
-alias WaterSensor d0
-alias PumpWaste d1
+# SETTINGS
+define kWaterMoles 100
+define kMaxTempInRoom 45
+# MAIN DEVICES
+alias Combuster d0
+alias FilterH2O d1
+alias WaterTank d2
+alias HotGas d3
+alias HotWater d4
+alias ExtMemory d5
+define kHashLed 1944485013
+define kHashGasSensor -1252983604
+define kHasnNameLedFilter HASH("LED Filter")
+define kHasnNameLedTemp HASH("LED Temperature")
+define kHasnNameLedFuel HASH("LED Fuel")
+# REGISTERS
+alias rGasPressure r15
+alias rLowWaterInTank r14
+alias rLowTempRoom r13
+alias rWaterMoles r12
+alias rFilterEnabled r11
+alias rHasFuel r10
 
 Init:
-move r0 0
-s Combuster Open 0 # Closing
-s PumpWaste Setting 10
-s PumpWaste Lock 1
-Start:
-s Combuster Mode r0
-s PumpWaste On 0
-beqz r0 Main
-s PumpWaste Lock 0
-s Combuster On 0
-yield
-j Init # simulate first start again
+l r0 WaterTank PrefabHash
+brne r0 -2113838091 3 # Water Analyzer
+s WaterTank Lock 1
+s WaterTank On 1
+s HotGas On 1
+s HotWater On 1
 
-Main:
+Loop:
 yield
-l r0 Combuster Open
-bnez r0 Start
+# RULES FOR ENABLE COMBUSTER
+# LOW WATER
+l r0 WaterTank Volume
+mul rLowWaterInTank r0 0.9 # Max Water
+# LOW ROOM TEMPERATURE
+lb r0 kHashGasSensor Temperature Maximum # Gas sensors
+sub r0 r0 273.15
+slt rLowTempRoom r0 kMaxTempInRoom
+# FILTER STATE
+l rFilterEnabled FilterH2O On
+# COMBUSTER FUEL
+l r0 Combuster On
+l r1 Combuster PressureInput
+sgtz r1 r1
+min rHasFuel r0 r1
 
-# LOGIC FOR START
-move r1 0 # state off
-l r0 WaterSensor VolumeOfLiquid
-bgt r0 kMinWater SetCombuster
+# CHECK WATER MOLES
+# Internal
+l r0 Combuster RatioWater
+l r1 Combuster RatioSteam
+add r1 r0 r1
+l r0 Combuster TotalMoles
+mul rWaterMoles r0 r1
+# Output
+l r0 Combuster RatioWaterOutput
+l r1 Combuster RatioSteamOutput
+add r1 r0 r1
+l r0 Combuster TotalMolesOutput
+mul r0 r0 r1
+add rWaterMoles rWaterMoles r0
+# Check in gas pipe
+l r0 HotGas RatioWater
+l r1 HotGas RatioSteam
+add r1 r0 r1
+l r0 HotGas TotalMoles
+mul r0 r0 r1
+add rWaterMoles rWaterMoles r0
+# Check in water pipe
+l r0 HotWater RatioWater
+l r1 HotWater RatioSteam
+add r1 r0 r1
+l r0 HotWater TotalMoles
+mul r0 r0 r1
+add rWaterMoles rWaterMoles r0
+
+s db Setting rWaterMoles
 
 # COMBUSTER LOGIC
-l r1 Combuster Mode
-select r2 r1 kPresOff kPresOn
-l r1 Combuster PressureOutput
-sle r1 r1 r2 # new state
+move r0 0
+beqz rLowWaterInTank SetCombuster
+beqz rFilterEnabled SetCombuster
+beqz rLowTempRoom SetCombuster
+beqz rHasFuel SetCombuster
+# Check current state
+l r0 Combuster Mode
+# Determine the pressure threshold based on CombusterH2 state
+sub r1 kWaterMoles 0.25 # 25%
+select r1 r0 kWaterMoles r1
+# Check pressure against the determined threshold
+slt r0 rWaterMoles r1
 SetCombuster:
-s Combuster Mode r1
+s Combuster Mode r0
 
-# Temperature
-l r0 Combuster TemperatureOutput
-sub r0 r0 273.15
-sle r0 r0 kTemperatureGasWaste
-# Pressure
-l r1 Combuster PressureOutput
-sge r1 r1 kPresOn
-# LOGIC
-and r0 r0 r1 # logic on/off
-s PumpWaste On r0
-j Main
+LedState:
+brdns ExtMemory 5
+select r0 rLowTempRoom 2 3 # 3 - orange, 2 - green
+select r0 rFilterEnabled r0 4  # 4 - red
+select r0 rHasFuel r0 4  # 4 - red
+s ExtMemory Setting r0
+
+select r0 rLowTempRoom Color.Green Color.Red
+sbn kHashLed kHasnNameLedTemp Color r0
+seqz r0 rLowTempRoom
+sbn kHashLed kHasnNameLedTemp On r0
+
+select r0 rFilterEnabled Color.Green Color.Red
+sbn kHashLed kHasnNameLedFilter Color r0
+seqz r0 rFilterEnabled
+sbn kHashLed kHasnNameLedFilter On r0
+
+
+select r0 rHasFuel Color.Green Color.Red
+sbn kHashLed kHasnNameLedFuel Color r0
+seqz r0 rHasFuel
+sbn kHashLed kHasnNameLedFuel On r0
+
+j Loop

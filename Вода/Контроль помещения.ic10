@@ -1,0 +1,47 @@
+define kPressureColdGas 2000 # kPa
+define kTemperatureC 5 # C
+
+alias GasSensor d0
+alias ActVent d1
+alias Door d2
+alias Stirling d3
+alias LcdPower d4
+alias OccupancySensor d5
+
+define kHashLamp 797794350
+
+alias rTemperature r15
+
+Start:
+s ActVent Mode 2
+s LcdPower Mode 2 # Power
+#s ActVent PressureInternal kPressureColdGas
+Loop:
+yield
+brdns Door 2
+s Door Open 0
+# STIRLING
+l r0 Stirling PowerGeneration
+s LcdPower Setting r0
+# LIGHTS
+l r0 OccupancySensor Activate
+sb kHashLamp On r0
+
+# Sensor
+lb r0 322782515 Activate Maximum
+sb kHashLamp On r0
+
+l rTemperature GasSensor Temperature
+sub rTemperature rTemperature 273.15
+s db Setting rTemperature
+
+sgt r0 rTemperature kTemperatureC
+s ActVent On r0
+
+beqz r0 Loop
+sub r0 rTemperature kTemperatureC
+mul r1 r0 kPressureColdGas
+mul r1 r1 0.5
+s ActVent PressureInternal r1
+
+j Loop
