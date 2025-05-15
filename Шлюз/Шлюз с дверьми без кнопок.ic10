@@ -32,10 +32,12 @@ s DoorExt Mode 1 # Set logic mode
 Init:
 move rEnable 0
 s DoorInt Open airlookState
-seqz r0 airlookState # invert state
-s DoorExt Open r0
+s DoorExt On airlookState
+seqz r1 airlookState # invert state
+s DoorExt Open r1
 sleep 1
 jal ToggleDevices
+s DoorInt On r1
 Loop:
 yield
 s db Setting airlookState
