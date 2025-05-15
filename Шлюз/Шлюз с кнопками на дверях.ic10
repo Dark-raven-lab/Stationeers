@@ -1,5 +1,5 @@
 # SETTINGS
-define kAccuracyPressure 1 # Early opening ratio
+define kAccuracyPressure 0.3 # Early opening ratio
 define kExceedingPressure 1.1 # AirVent pressure increase coefficient
 define kSkipInternalPressurization 0 # Skip pressurization stage
 define kSkipExternalPressurization 0 # Skip pressurization stage
@@ -8,9 +8,8 @@ alias DoorInt d0
 alias DoorExt d1
 alias Led d2 # OPTIONAL
 alias OccupancySensor d3 # OPTIONAL
-define kSlider 576516101 # LED SLIDERS (for visible pressure)
 define kGasSensor -1252983604 # GAS SENSORS
-define kToggleButton 491845673 # TOGGLE BUTTONS
+define kSlider 576516101 # LED SLIDERS (for visible pressure)
 define kHashAirVent -1129453144 # AIR VENTS
 # NAMES
 define kHashNameVentExt HASH("Ext.Active Vent")
@@ -39,7 +38,9 @@ jal ToggleDevices
 Loop:
 yield
 s db Setting airlookState
-lb rEnable kToggleButton Activate Maximum
+l r0 DoorInt Setting
+l r1 DoorExt Setting
+or rEnable r0 r1
 brdns OccupancySensor 6 # Sensor not found
 l r1 OccupancySensor Activate
 breq r1 rSensorState 4 # State not changed
@@ -82,7 +83,7 @@ sbn kHashAirVent rBackAirHashName Mode 1 # Set depressure mode
 sbn kHashAirVent rBackAirHashName On 1 # Enable decompression
 WaitDecompression:
 yield
-lb r0 kToggleButton Activate Maximum # check skip stage
+l r0 DoorBack Setting # check skip stage
 beq r0 1 Init # If out want open-go next
 lb r2 kGasSensor Pressure Maximum # check pressure
 div r0 r2 r1
@@ -90,7 +91,7 @@ sb kSlider Setting r0
 bgtz r2 WaitDecompression # if press != 0 retern
 Pressurization:
 s DoorBack On 0
-s DoorFront Lock 1
+s DoorFront Lock 0
 seqz airlookState airlookState # invert state
 sbn kHashAirVent rBackAirHashName On 0 # STOP DEPRESSURE
 beqz pressOut StopPressurization
@@ -98,7 +99,7 @@ sbn kHashAirVent rFrontAirHashName Mode 0 # Set pressurize mode
 sbn kHashAirVent rFrontAirHashName On 1 # Enable pressurizing
 WaitPressurization:
 yield
-lb r0 kToggleButton Activate Maximum # check skip stage
+l r0 DoorFront Setting # check skip stage
 beq r0 1 StopPressurization # If door out was open - exit
 mul r0 pressOut kExceedingPressure # Calculate boost pressure
 sbn kHashAirVent rFrontAirHashName PressureExternal r0
@@ -110,6 +111,10 @@ blt r2 r1 WaitPressurization
 StopPressurization:
 move rEnable 0
 ToggleDevices:
+s DoorInt Lock 0
+s DoorExt Lock 0
+s DoorInt Setting 0
+s DoorExt Setting 0
 sb kHashAirVent On 0
 sb kHashAirVent Lock rEnable # lock / unlock AirVent
 sb kFlickerLamp On rEnable # enable / disable Flash Light
