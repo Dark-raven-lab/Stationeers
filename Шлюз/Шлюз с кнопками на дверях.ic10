@@ -1,5 +1,4 @@
-# SETTINGS
-define kAccuracyPressure 0.3 # Early opening ratio
+define kAccuracyPressure 0.9 # Early opening ratio
 define kExceedingPressure 1.1 # AirVent pressure increase coefficient
 define kSkipInternalPressurization 0 # Skip pressurization stage
 define kSkipExternalPressurization 0 # Skip pressurization stage
@@ -91,6 +90,7 @@ lb r2 kGasSensor Pressure Maximum # check pressure
 div r0 r2 r1
 sb kSlider Setting r0
 bgtz r2 WaitDecompression # if press != 0 retern
+yield
 Pressurization:
 s DoorBack On 0
 s DoorFront Lock 0

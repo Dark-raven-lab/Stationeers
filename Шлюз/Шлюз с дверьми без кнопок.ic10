@@ -90,6 +90,7 @@ lb r2 kGasSensor Pressure Maximum # check pressure
 div r0 r2 r1
 sb kSlider Setting r0
 bgtz r2 WaitDecompression # if press != 0 retern
+yield
 Pressurization:
 s DoorBack On 0
 s DoorFront Lock 1
