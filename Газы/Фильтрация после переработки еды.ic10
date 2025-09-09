@@ -1,0 +1,74 @@
+# Settings for start filtrarion
+define kPressureInputForStart 15000 # kpA
+define kPRessureInputForStop 5000 # kpA
+define kMaxPressureOutput 40000 # kpA
+define kHashName HASH("Volume Pump filtration N2/H")
+# DEVICES
+alias Slider d0 # optional
+alias OutGasTank d1 # optional
+define kHashPump -321403609
+# REGISTERS
+alias empty r15
+alias disable r14
+alias filterState r13
+move disable 0
+move empty 0
+s db Open 0
+Initialisation:
+select r0 disable 0 1 # inverting signal
+brdns Slider 2
+s Slider Lock r0 # invert signal
+sbn kHashPump kHashName Setting 10
+sbn kHashPump kHashName Lock r0 # invert signal
+sbn kHashPump kHashName On 0
+s db Mode disable
+s db On r0 # invert signal
+beqz disable Main
+yield
+j 0 # simulate first start again
+Main:
+yield
+l disable db Open
+bnez disable Initialisation
+CheckFilters:
+ls r0 db 0 Occupied
+ls r1 db 1 Occupied
+add r2 r0 r1
+max r2 r2 1
+ls r0 db 0 Quantity
+ls r1 db 1 Quantity
+add r0 r0 r1 # summ, 0-200
+div r0 r0 r2 # x / count filters
+mul r0 r0 0.01 # x * 0.01
+slt r1 r0 0.2 # enable slider if < 20%
+SetSlider:
+brdns Slider 3 # skip if not connected
+s Slider Setting r0 # precent
+s Slider On r1 # enable/disable
+seqz empty r0 # 1 if x == 0
+PressureControl:
+move filterState 0 # first state
+l r0 db PressureOutput # read pipe pressure output
+brdns OutGasTank 2
+l r0 OutGasTank Pressure # read tank pressure output
+# Skip if out tank pressure high
+bgt r0 kMaxPressureOutput SetFilter # EXIT
+# Skip if filters empty
+bnez empty SetFilter # EXIT
+# Skip if there are other gases
+l r0 db RatioNitrogenInput
+l r1 db RatioVolatilesInput
+add r0 r0 r1
+blt r0 0.9999999 SetFilter # EXIT
+SelectState:
+l r2 db Mode
+select r1 r2 kPRessureInputForStop kPressureInputForStart
+l r0 db PressureInput
+sgt filterState r0 r1
+SetFilter:
+s db Mode filterState
+beq r2 filterState Main
+select r0 filterState 0 1
+sleep r0
+sbn kHashPump kHashName On filterState
+j Main

@@ -1,11 +1,12 @@
 # Advanced Filtering Control from DarkRaven v.1.1
 # Settings for start filtrarion
-define kMaxPressureOutput 30000 # kpA
-define kTempStart -10 # C
-define kTempStop 30 # C
+define kMaxPressureOutput 40000 # kpA
+define kPressureInputForStart 1000
+define kTempStart 0 # C
+define kTempStop 150 # C
 define kRatioStart 0.1 # 0.01 = 1%, 0.1 = 10%
 define kRatioStop 0.01 # 0.01 = 1%, 0.1 = 10%
-define kHashName HASH("Pump Filtration O2")
+define kHashName HASH("Volume Pump O2")
 # DEVICES
 alias Slider d0 # optional
 alias OutGasTank d1 # optional
@@ -76,21 +77,24 @@ s Slider On r1 # enable/disable
 seqz empty r0 # 1 if x == 0
 PressureControl:
 move filterState 0 # first state
-brdns OutGasTank 3
-l r0 OutGasTank Pressure
-jr 2
 l r0 db PressureOutput
-# 1 if GasTank.Pressure < kMaxPresInGasTank
+brdns OutGasTank 2
+l r0 OutGasTank Pressure
+# Skip if out tank pressure high
 bgt r0 kMaxPressureOutput SetFilter # EXIT
-# disable if warning == 1
+# Skip if filters empty
 bnez empty SetFilter # EXIT
 # Check input temperature
 l r0 db TemperatureInput
 sub r0 r0 273.15
-# 1 if Temperature < Max Gas Temp
+# Skip if temperature high
 bgt r0 kTempStop SetFilter # EXIT
-# 1 if Temperature > Min Gas Temp
+# Skip if temperature low
 blt r0 kTempStart SetFilter # EXIT
+# Check input pressure
+l r0 db PressureInput
+# Skip if input pressure low
+blt r0 kPressureInputForStart SetFilter # EXIT
 GetGasRatio:
 move r0 0
 brne typeGas 1 2
