@@ -1,0 +1,78 @@
+# SETTINGS
+define kOxygenMaxPressure 6500
+define kPropellantMaxPressure 6500
+define kLockDevices 1
+move sp 0
+push HASH("Suit Storage 1")
+push HASH("Suit Storage 2")
+
+# STATIC DEVICES
+define kHashSuitStorage 255034731
+define kHashLed 1944485013
+alias Oxygen d0
+alias Propellant d1
+# REGISTERS
+alias rMaxIndex r15
+alias rHashName r14
+alias rLowCharge r13
+alias rLowOxygen r12
+alias rLowPropellant r11
+alias rHighWaste r10
+alias rHasSuit r9
+alias rHasJetpack r8
+move rMaxIndex sp
+Reset:
+sdse r0 Propellant
+breqz r0 4
+s Propellant Setting kPropellantMaxPressure
+s Propellant On kLockDevices
+s Propellant On rLowPropellant
+brdns Oxygen 6
+s Oxygen Setting kOxygenMaxPressure
+s Oxygen Lock kLockDevices
+or r1 rLowOxygen rLowPropellant
+select r0 r0 rLowOxygen r1
+s Oxygen On r0
+move rLowCharge 0
+move rLowOxygen 0
+move rHighWaste 0
+move rLowPropellant 0
+move sp rMaxIndex
+yield
+Loop:
+beqz sp Reset
+pop rHashName
+# Check install
+lbns rHasSuit kHashSuitStorage rHashName 1 Occupied Maximum
+lbns rHasJetpack kHashSuitStorage rHashName 2 Occupied Maximum
+# Check charge
+breqz rHasSuit 4
+lbns r0 kHashSuitStorage rHashName 1 ChargeRatio Minimum# full = 0.99
+slt r0 r0 0.99
+max rLowCharge rLowCharge r0
+# Check oxygen gas
+breqz rHasSuit 4
+lbns r0 kHashSuitStorage rHashName 1 PressureAir Minimum# Oxygen
+slt r0 r0 kOxygenMaxPressure
+max rLowOxygen rLowOxygen r0
+# Check waste gas
+breqz rHasSuit 4
+lbns r0 kHashSuitStorage rHashName 1 PressureWaste Maximum
+sgtz r0 r0
+max rHighWaste rHighWaste r0
+# Check propellent gas
+breqz rHasJetpack 4
+lbns r0 kHashSuitStorage rHashName 2 Pressure Minimum
+slt r0 r0 kPropellantMaxPressure
+max rLowPropellant rLowPropellant r0
+
+or r0 rLowCharge rLowOxygen
+or r0 r0 rHighWaste
+or r0 r0 rLowPropellant
+sbn kHashSuitStorage rHashName On r0
+
+sbn kHashLed rHashName On r0
+select r0 r0 Color.Orange Color.Green
+sbn kHashLed rHashName Color r0
+
+j Loop
