@@ -1,54 +1,96 @@
+# SETTING GROUPS
 push HASH("Memory Power")
 push HASH("Memory Production")
-push HASH("Memory Smelter")
-push HASH("Memory Centrifuge")
+#push HASH("Memory Smelter")
+#push HASH("Memory Room Traders")
+#push HASH("Memory Greenhouse")
+#push HASH("Memory Composter Room")
+#push HASH("Memory Composter Centrifuge")
+#push HASH("Memory Water Producer Room")
+#push HASH("Memory Centrifuge")
+#push HASH("Memory Room Storages")
 push 0
-
+# SETTING TIMES
 define kTimeVoice 2
 define kTimeAlert 5
-
-alias name r15
-alias lightLCD r14
-alias voiceID r13
-alias alertID r12
-alias count r11
-alias speakerOn r10
-
-define kMEMORY -851746783
-define kLIGHT 1944485013
-define kSPEAKER -828056979
-
-move count 0
+# DEVICES
+alias ToggleVoice d0
+# REGISTERS
+alias rNameGroup r15
+alias rColorLed r14
+alias rVoiceID r13
+alias rAlertID r12
+alias rTimer r11
+alias rCurrentTimer r10
+alias rNewVoiceID r9
+alias rNewAlertID r8
+alias rVoiceCode r7
+alias rVoiceOn r6
+alias rSkipVoice r5
+# DEVICES
+define kMemory -851746783
+define kLED 1944485013
+define kSpeaker -828056979
+init:
+move rCurrentTimer kTimeVoice
+move rTimer 0
 reset:
-yield
-snez r0 voiceID
-sb kSPEAKER On r0
 move sp 0
+breq rVoiceID rNewVoiceID 4
+move rTimer 0
+move rVoiceOn 1
+move rSkipVoice 0
+move rVoiceID rNewVoiceID
+move rAlertID rNewAlertID
+move rNewVoiceID 0
+move rNewAlertID 0
+move rVoiceCode 0
 next:
 add sp sp 1
-peek name
-beqz name reset
-lbn r0 kMEMORY name Setting Average
-# Start parce message
-mod lightLCD r0 100
-sub r0 r0 lightLCD
-mod voiceID r0 10000
-sub alertID r0 voiceID
-div voiceID voiceID 100
-div alertID alertID 10000
-# END parce
-sbn kLIGHT name Color lightLCD
-sne r1 lightLCD 2
-sbn kLIGHT name On r1 # enable != green
-
+peek rNameGroup
+beqz rNameGroup reset
 s db Setting sp
-# Voice message
-beqz voiceID next # Exit if 0
-# Set Voice Alarm
-add count count 0.5
-sgt r0 count kTimeAlert # max
-select count r0 0 count # reset
-slt r0 count kTimeVoice
-select r1 r0 voiceID alertID
-sb kSPEAKER Mode r1 # ALARM
-j reset
+yield
+l r0 ToggleVoice Activate
+breqz r0 2
+move rSkipVoice 1
+# Read message from group memory
+lbn r0 kMemory rNameGroup Setting Maximum
+# Start parce message
+mod rColorLed r0 100 # Read Color rColorLed
+sub r0 r0 rColorLed
+breqz r0 7
+brnez rVoiceCode 6
+move rVoiceCode r0
+mod r1 rVoiceCode 10000
+sub r2 rVoiceCode r1
+div rNewVoiceID r1 100 # Read rVoiceID
+div rNewAlertID r2 10000 # Read rAlertID
+# Set color led
+sbn kLED rNameGroup Color rColorLed
+sne r0 rColorLed 2
+sbn kLED rNameGroup On r0 # Enable light if color not is green
+
+UpdateTimer:
+beqz rVoiceOn next
+sub rTimer rTimer 0.5
+blez rTimer SwitchTimer         # If the timer reaches 0 or below, switch to the o tim
+j next
+
+SwitchTimer:
+# Toggle between short and long timer values
+beq rCurrentTimer kTimeVoice SetLongTimer
+move rCurrentTimer kTimeVoice
+sb kSpeaker Mode rVoiceID
+j ResetTimer
+
+SetLongTimer:
+move rCurrentTimer kTimeAlert
+sb kSpeaker Mode rAlertID
+
+ResetTimer:
+move rTimer rCurrentTimer
+snez rVoiceOn rVoiceID
+select rVoiceOn rSkipVoice 0 rVoiceOn
+sb kSpeaker On rVoiceOn
+j next
