@@ -1,0 +1,117 @@
+define kAccuracyPressure 0.9 # Early opening ratio
+define kExceedingPressure 1.1 # Increase coefficient
+define kSkipInt 0
+define kSkipExt 0
+# REQUIRED DEVICES
+alias Led d2 # OPTIONAL
+define kGasSensor -1252983604 # GAS SENSORS
+define kSlider 576516101 # LED SLIDERS
+define kHashAirVent -1129453144 # AIR VENTS
+define kHashDoor -793837322 # Composit doors
+# NAMES
+define HashNameDoorInt HASH("Airlock Door Int")
+define HashNameDoorExt HASH("Airlock Door Ext")
+define kHashNameVentExt HASH("Airlock Vent Ext")
+define kHashNameVentInt HASH("Airlock Vent Int")
+# OPTIONAL DEVICES
+define kFlickerLamp -1535893860 # FLICKERS LAMP
+define kSpeaker -828056979 # SKEACKERS
+# REGISTERS
+alias pressInt r15
+alias pressExt r14
+alias pressOut r13
+alias airlookState r12
+alias rHashNameAirFront r10
+alias rHashNameAirBack r9
+alias rEnable r8
+alias rHashNameDoorFront r7
+alias rHashNameDoorBack r6
+sbn kHashDoor HashNameDoorInt Mode 1
+sbn kHashDoor HashNameDoorExt Mode 1
+Init:
+move rEnable 0
+sbn kHashDoor HashNameDoorInt Open airlookState
+sbn kHashDoor HashNameDoorExt On airlookState
+seqz r1 airlookState # invert state
+sbn kHashDoor HashNameDoorExt Open r1
+sleep 1
+jal ToggleDevices
+sbn kHashDoor HashNameDoorInt On r1
+Loop:
+yield
+s db Setting airlookState
+lb rEnable kHashDoor Setting Maximum
+beqz rEnable Loop
+beq airlookState 0 GoToInt
+GoToExt:
+lb pressInt kGasSensor Pressure Maximum
+select pressOut kSkipExt 0 pressExt
+j AirlockStart
+GoToInt:
+lb pressExt kGasSensor Pressure Maximum
+select pressOut kSkipInt 0 pressInt
+AirlockStart:
+sb kSpeaker Mode 9
+select rHashNameAirFront airlookState kHashNameVentExt kHashNameVentInt
+select rHashNameAirBack airlookState kHashNameVentInt kHashNameVentExt
+select rHashNameDoorFront airlookState HashNameDoorExt HashNameDoorInt
+select rHashNameDoorBack airlookState HashNameDoorInt HashNameDoorExt 
+AirlockMain:
+jal ToggleDevices
+sbn kHashDoor rHashNameDoorBack On 1
+sbn kHashDoor rHashNameDoorBack Open 0
+sbn kHashDoor rHashNameDoorFront Lock 1
+sleep 1 # wait close door
+jal AirlockCycle
+sbn kHashDoor rHashNameDoorFront Open 1
+sleep 1 # wait open door
+sbn kHashDoor rHashNameAirBack On 1
+sbn kHashDoor rHashNameDoorFront On 0
+sbn kHashDoor rHashNameDoorFront Setting 0
+j Loop
+AirlockCycle:
+lb r1 kGasSensor Pressure Maximum
+sbn kHashAirVent rHashNameAirBack Mode 1 # Set depressure mode
+sbn kHashAirVent rHashNameAirBack On 1 # Enable decompression
+WaitDecompression:
+yield
+lbn r0 kHashDoor rHashNameDoorBack Setting Maximum # check skip stage
+beq r0 1 Init # If out want open-go next
+lb r2 kGasSensor Pressure Maximum # check pressure
+div r0 r2 r1
+sb kSlider Setting r0
+bgtz r2 WaitDecompression # if press != 0 retern
+yield
+Pressurization:
+sbn kHashDoor rHashNameDoorBack On 0
+sbn kHashDoor rHashNameDoorFront Lock 0
+seqz airlookState airlookState # invert state
+sbn kHashAirVent rHashNameAirBack On 0 # STOP DEPRESSURE
+beqz pressOut StopPressurization
+sbn kHashAirVent rHashNameAirFront Mode 0 # Set pressurize mode
+sbn kHashAirVent rHashNameAirFront On 1 # Enable pressurizing
+WaitPressurization:
+yield
+lbn r0 kHashDoor rHashNameDoorFront Setting Maximum # check skip stage
+beq r0 1 StopPressurization # If door out was open - exit
+mul r0 pressOut kExceedingPressure # Calculate boost pressure
+sbn kHashAirVent rHashNameAirFront PressureExternal r0
+lb r2 kGasSensor Pressure Minimum
+mul r1 pressOut kAccuracyPressure # Wait pressure
+div r0 r2 r1
+sb kSlider Setting r0
+blt r2 r1 WaitPressurization
+StopPressurization:
+move rEnable 0
+ToggleDevices:
+sb kHashDoor Lock 0
+sb kHashDoor Setting 0
+sb kHashAirVent On 0
+sb kHashAirVent Lock rEnable # lock / unlock AirVent
+sb kFlickerLamp On rEnable # enable / disable Flash Light
+sb kSpeaker On rEnable # enable / disable Speaker
+sb kSlider On rEnable # enable / disable Sliders
+brdns Led 3 # enable lamp if connected
+select r0 rEnable Color.Red Color.Orange
+s Led Color r0
+j ra
