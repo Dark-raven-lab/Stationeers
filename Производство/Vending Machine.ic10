@@ -1,0 +1,118 @@
+# Devices
+alias dVend d0
+alias dButton d1
+alias dDial d2
+alias dLEDCap d3
+alias dLEDCount d4
+# Registers
+alias rMaxStack r15
+alias rIngotHash r14
+alias rIngotCount r13
+alias rSlotIndex r12
+alias rUpdateOrders r11
+
+s dLEDCap Mode 1
+move rSlotIndex 2
+move rUpdateOrders 1
+Init:
+push -1301215609 # Iron
+push 0
+push -404336834 # Copper
+push 0
+push 226410516 # Gold
+push 0
+push -290196476 # Silicon
+push 0
+push -929742000 # Silver
+push 0
+push -1406385572 # Nickel
+push 0
+#push 2134647745 # Lead
+#push 0
+push -654790771 # Steel
+push 0
+#push -82508479 # Solder
+#push 0
+#push -297990285 # Invar
+#push 0
+#push 502280180 # Electrum
+#push 0
+#push 1058547521 # Constatntan
+#push 0
+#push 156348098 # Waspaloy
+#push 0
+#push -787796599 # Inconel
+#push 0
+#push 412924554 # Astroloy
+#push 0
+#push -1897868623 # Stelite
+#push 0
+#push 1579842814 # Hasteloy
+#push 0
+move rMaxStack sp # save max
+div r0 rMaxStack 2
+s dDial Mode r0
+Reset:
+move sp 1
+Start:
+yield
+
+select r0 rUpdateOrders Color.Orange Color.Green
+s dLEDCap Color r0
+
+beq rUpdateOrders 1 UpdateStack
+
+l r0 dVend Ratio
+s dLEDCap Setting r0
+
+l r0 dDial Setting
+mul r0 r0 2
+sub sp r0 1
+jal GetStack
+s db Setting rIngotHash
+s dLEDCount Setting rIngotCount
+sle r1 rIngotCount 0
+select r0 r1 Color.Red Color.Green
+s dLEDCount Color r0
+
+breqz rIngotCount 8
+l r0 dButton Activate
+breqz r0 6
+s dVend RequestHash rIngotHash
+yield
+ls r0 dVend 1 Quantity
+breqz r0 -2
+sub rIngotCount rIngotCount r0
+jal SaveStack
+
+j Start
+
+UpdateStack:
+div r0 sp rMaxStack
+s dLEDCap Setting r0
+beqz rUpdateOrders Start
+jal GetStack
+VendingUpdate:
+ls r1 dVend rSlotIndex OccupantHash
+beqz r1 NextVendingSlot # if empty slot then skip
+bne r1 rIngotHash NextVendingSlot # if not same then skip
+ls r1 dVend rSlotIndex Quantity
+add rIngotCount rIngotCount r1
+NextVendingSlot:
+bge rSlotIndex 101 StopVendingUpdate
+add rSlotIndex rSlotIndex 1
+j VendingUpdate
+StopVendingUpdate:
+move rSlotIndex 2
+jal SaveStack
+slt rUpdateOrders sp rMaxStack
+j UpdateStack
+SaveStack:
+sub sp sp 1
+push rIngotCount
+j ra
+GetStack:
+peek rIngotHash
+add sp sp 1
+peek rIngotCount
+j ra

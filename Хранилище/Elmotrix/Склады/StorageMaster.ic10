@@ -22,25 +22,25 @@ yield
 add r3 r3 0.5
 seqz BC BC
 breqz BC 20 #ToB+1
-ls r0 Stacker 1 OccupantHash
-brne r0 RequestedHash 3 #ToA
-ls r0 Stacker 1 Quantity
-sub StackerRQ StackerRQ r0
-ls r0 Sorter 1 OccupantHash #A
-brnez r0 14 #ToB+1
-ls r0 Sorter 0 OccupantHash
-breqz r0 12 #ToB+1
-brne r0 RequestedHash 10 #ToB
-ls Bvalue Sorter 0 Quantity
-brgt Bvalue SorterRQ 8 #ToB
-sub SorterRQ SorterRQ Bvalue
-s Sorter Output 0
-brdns LMRouterCom 4
-move Cvalue RequestAdr
-jal Compress
-push ComValue
-jr 2
-s Sorter Output 1 #B
+    ls r0 Stacker 1 OccupantHash
+    brne r0 RequestedHash 3 #ToA
+        ls r0 Stacker 1 Quantity
+        sub StackerRQ StackerRQ r0
+    ls r0 Sorter 1 OccupantHash #A
+    brnez r0 14 #ToB+1
+    ls r0 Sorter 0 OccupantHash
+    breqz r0 12 #ToB+1
+    brne r0 RequestedHash 10 #ToB
+    ls Bvalue Sorter 0 Quantity
+    brgt Bvalue SorterRQ 8 #ToB
+    sub SorterRQ SorterRQ Bvalue
+    s Sorter Output 0
+    brdns LMRouterCom 4
+        move Cvalue RequestAdr
+        jal Compress
+        push ComValue
+    jr 2
+    s Sorter Output 1 #B
 select r0 StackerRQ StackerRQ 1000
 s Stacker Setting r0
 bgtzal sp ReportToRouter
@@ -49,7 +49,7 @@ move StackerRQ 0
 move SorterRQ 0
 s LMStorageResponse Setting 0
 s LMStorageInternal Setting 900
-jr 3
+j WaitForComunication
 ClearInternal:
 s LMStorageInternal Setting 0
 WaitForComunication:
@@ -60,9 +60,9 @@ move r3 30
 s Stacker Activate 1
 l r0 LMStorageInternal Setting
 brne r0 900 4
-sleep 2
-l ClientCount LMStorageResponse Setting
-s LMStorageInternal Setting 0
+    sleep 2
+    l ClientCount LMStorageResponse Setting
+    s LMStorageInternal Setting 0
 bnez r0 Start
 l ComValue LMStorageExternal Setting
 jal Decompress
@@ -73,12 +73,11 @@ move Cvalue 0
 jal Compress
 s LMStorageInternal Setting ComValue
 s LMStorageResponse Setting 0
-#sb -128473777 On 1
 WaitForCount:
 move Stage WaitForCount
 l r0 LMStorageResponse Setting
 mod r1 r0 100
-bne ClientCount r1 Start
+bne ClientCount r1 Start # wait all responce
 div r1 r0 100
 trunc AvailableQ r1
 min RequestQua AvailableQ RequestQua
@@ -108,6 +107,7 @@ mul r1 Bvalue 100
 add ComValue ComValue r1
 bgez RequestedHash ra
 mul ComValue ComValue -1
+#sb -128473777 On 1
 j ra
 Decompress:
 abs r1 ComValue
@@ -123,6 +123,6 @@ j ra
 ReportToRouter:
 l r0 LMRouterCom Setting
 bnez r0 ra
-pop r0
-s LMRouterCom Setting r0
+    pop r0
+    s LMRouterCom Setting r0
 j ra

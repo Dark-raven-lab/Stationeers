@@ -1,10 +1,24 @@
 alias Sorter d0
-alias StorageUnit d1
 
-sll r0 1758427767 8 # Prefab Hash
+define kQuantity 24
+define kCount 2
+
+s Sorter Mode 0 # 0-All, 1-Any, 2-None
+# rules 1
+sll r0 1724793494 8 # Prefab Hash
 or r0 r0 SorterInstruction.FilterPrefabHashEquals
-
-s db Setting 0
-s Sorter Mode 1 # 0-All, 1-Any, 2-None
 put Sorter 0 r0
 
+# rules 2
+move r0 0
+sll r0 kQuantity 16
+sll r1 Greater 8
+or r0 r0 r1
+or r0 r0 SorterInstruction.FilterQuantityCompare
+put Sorter 1 r0
+
+# rules 3
+move r0 0
+sll r0 kCount 8 # Limit Next Execution
+or r0 r0 SorterInstruction.LimitNextExecutionByCount
+put Sorter 2 r0
