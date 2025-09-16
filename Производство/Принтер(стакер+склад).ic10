@@ -20,15 +20,15 @@ bdns Sorter start
 s Sorter Mode 2
 start:
 yield
+l r0 Printer On
+beq r0 rPrinterOn consolestate
+move rPrinterOn r0
+beq r0 1 setup # printer enabled
+consolestate:
 brdns Console 4
 sne r0 rIngot kCLEARINGOT
 and r0 r0 rPrinterOn
 s Console On r0
-checkButton:
-bdns Button checkSorter
-l r0 Button Setting
-breqz r0 2
-move rIngot kCLEARINGOT
 checkSorter:
 bdns Sorter UpdatePrinterIngotImport
 ls r0 Sorter 0 Occupied
@@ -54,13 +54,12 @@ breqz rPrinterWasOpen 2
 s Stacker Activate 1
 UpdatePrinterProduced:
 l r0 Printer Open
-l rPrinterOn Printer On
 breq r0 rPrinterWasOpen 4
 move rPrinterWasOpen r0
 select r0 rPrinterWasOpen 500 rNeedCount
 s Stacker Setting r0
 beq rPrinterWasOpen 1 start
-beq rPrinterOn 0 checkRestock # if Printer off - exit
+beqz rPrinterOn start # if Printer off - exit
 l rExportCount Printer ExportCount # How much has already been produced
 l rNeedCount Stacker Setting # How much do need to produce
 sgt rPrinting rExportCount 0 # Production has begun
