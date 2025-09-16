@@ -12,7 +12,7 @@ alias rOldImport r11
 alias rCounter r10
 alias rIngot r9
 alias rPrinting r8
-alias rPrinterOpen r7
+alias rPrinterWasOpen r7
 define kCLEARINGOT -1
 setup:
 move rIngot kCLEARINGOT
@@ -46,20 +46,20 @@ l r0 Printer Activate
 breq r0 rPrinting 2
 s Printer Activate rPrinting
 UpdateStacker:
-breq rPrinterOpen 0 2
-s Stacker Activate 1
-beq rPrinterOn 0 UpdatePrinterProduced
 ls r0 Stacker 0 Occupied
-or r0 r0 rPrinterOpen
+or r0 r0 rPrinterWasOpen
 s Stacker On r0
+beqz rPrinterOn UpdatePrinterProduced
+breqz rPrinterWasOpen 2
+s Stacker Activate 1
 UpdatePrinterProduced:
 l r0 Printer Open
-breq r0 rPrinterOpen 4
-move rPrinterOpen r0
-select r0 rPrinterOpen 500 rNeedCount
-s Stacker Setting r0
-beq rPrinterOpen 1 checkRestock
 l rPrinterOn Printer On
+breq r0 rPrinterWasOpen 4
+move rPrinterWasOpen r0
+select r0 rPrinterWasOpen 500 rNeedCount
+s Stacker Setting r0
+beq rPrinterWasOpen 1 start
 beq rPrinterOn 0 checkRestock # if Printer off - exit
 l rExportCount Printer ExportCount # How much has already been produced
 l rNeedCount Stacker Setting # How much do need to produce
@@ -75,8 +75,6 @@ s Stacker ClearMemory 1
 move rOldImport 0
 checkRestock:
 bdns Vending start
-l r0 Printer Open
-bnez r0 start
 yield
 bne rIngot kCLEARINGOT start
 move r0 HASH("Iron")
