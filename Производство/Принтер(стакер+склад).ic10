@@ -1,4 +1,4 @@
-#Printer Logistics V5 CowsAreEvil & DarkRaven
+# Printer Logistics V5.1 CowsAreEvil & DarkRaven
 alias Printer d0
 alias Stacker d1  #(Optional)
 alias Sorter d2   #(Optional)
@@ -7,8 +7,8 @@ alias Button d4   #(Optional)
 alias Console d5  #(Optional)
 alias rExportCount r14
 alias rNeedCount r13
-alias rPrinterOn r11
-alias rOldImport r12
+alias rPrinterOn r12
+alias rOldImport r11
 alias rCounter r10
 alias rIngot r9
 alias rPrinting r8
@@ -62,7 +62,7 @@ l rNeedCount Stacker Setting # How much do need to produce
 sgt rPrinting rExportCount 0 # Production has begun
 blt rExportCount rNeedCount checkRestock # Wait if not enough is produced
 s Printer Activate 0
-sleep 0.5
+yield
 s Printer On 0
 s Stacker Activate 1
 printerclean:
@@ -73,6 +73,7 @@ checkRestock:
 bdns Vending start
 l r0 Printer Open
 bnez r0 start
+yield
 bne rIngot kCLEARINGOT start
 move r0 HASH("Iron")
 jal FuncCheckIngotCount
