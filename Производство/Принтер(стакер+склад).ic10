@@ -20,6 +20,10 @@ bdns Sorter start
 s Sorter Mode 2
 start:
 yield
+brdns Console 4
+sne r0 rIngot kCLEARINGOT
+and r0 r0 rPrinterOn
+s Console On r0
 checkButton:
 bdns Button checkSorter
 l r0 Button Setting
@@ -111,9 +115,6 @@ lr r0 Printer Required -2002530571 #Lead
 select rIngot r0 2134647745 rIngot
 IngotRequest:
 s db Setting rIngot
-brdns Console 3
-sne r0 rIngot kCLEARINGOT
-s Console On r0
 beq rIngot kCLEARINGOT start
 s Vending RequestHash rIngot
 j start
