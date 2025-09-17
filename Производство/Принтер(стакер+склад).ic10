@@ -15,6 +15,9 @@ alias rPrinting r8
 alias rPrinterWasOpen r7
 define kCLEARINGOT -1
 setup:
+move rOldImport 0
+s Printer ClearMemory 1
+s Stacker ClearMemory 1
 move rIngot kCLEARINGOT
 bdns Sorter start
 s Sorter Mode 2
@@ -42,9 +45,8 @@ l r0 Printer ImportCount
 ble r0 rOldImport UpdateStacker # not new delivered
 move rIngot kCLEARINGOT # Update delivery
 move rOldImport r0
-l r0 Printer Activate
-breq r0 rPrinting 2
-s Printer Activate rPrinting
+breqz rPrinting 2
+s Printer Activate 1
 UpdateStacker:
 ls r0 Stacker 0 Occupied
 or r0 r0 rPrinterWasOpen
@@ -68,10 +70,6 @@ s Printer Activate 0
 yield
 s Printer On 0
 s Stacker Activate 1
-printerclean:
-s Printer ClearMemory 1
-s Stacker ClearMemory 1
-move rOldImport 0
 checkRestock:
 bdns Vending start
 yield
