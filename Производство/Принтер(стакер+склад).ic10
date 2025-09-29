@@ -1,9 +1,8 @@
 # Printer Logistics V5.1 CowsAreEvil & DarkRaven
 alias Printer d0
-alias Stacker d1  #(Optional)
+alias Stacker d1
 alias Sorter d2   #(Optional)
 alias Vending d3  #(Optional)
-alias Button d4   #(Optional)
 alias Console d5  #(Optional)
 alias rExportCount r14
 alias rNeedCount r13
