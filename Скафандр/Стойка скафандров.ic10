@@ -25,7 +25,7 @@ Reset:
 sdse r0 Propellant
 breqz r0 4
 s Propellant Setting kPropellantMaxPressure
-s Propellant On kLockDevices
+s Propellant Lock kLockDevices
 s Propellant On rLowPropellant
 brdns Oxygen 6
 s Oxygen Setting kOxygenMaxPressure
