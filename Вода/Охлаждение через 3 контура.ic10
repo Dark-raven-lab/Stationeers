@@ -1,78 +1,85 @@
-# 1 kontur
-define kTemp1 750
-define kPress1 10
-# 2 kontur
-define kTemp2 380
-define kPress2 5
-# 3 kontur
-define kTemp3 305
-define kPress3 5
+define kMinTempInGeneralOutlineC 100 # c
+define kMinTempInWaterOutline 25 # C
+define kMinTempInGasOutlineC 25 # C
+define kMinPressureInOutlines 10 # kPa
+define kLockDevices 1
 
-define kSleepSec 30
+# General outline
+alias dSensor1 d0
+alias dPump1 d3
+# Gas outline
+alias dSensor2 d1
+alias dPump2 d4
+# Water outline
+alias dWSensor3 d2
+alias dWPump3 d5
+# Const devices
+define kHashGasSensor -1252983604
+define kHashAirVent -1129453144
+define kHashDoors -793837322
+# REGISTERS
+alias rTemp r15
+alias rPress r14
 
-# === END SETTINGS ===
-
-alias Sensor1 d0
-alias Sensor2 d1
-alias Sensor3 d2
-alias PressReg1 d3
-alias PressReg2 d4
-alias PressReg3 d5
-
-alias stage r15
-alias tempMax r14
-alias pressMax r13
-alias count r12
-
-Start:
-s PressReg1 Setting 0
-brdns PressReg2 2
-s PressReg2 Setting 0
-brdns PressReg3 2
-s PressReg3 Setting 0
-
-Main:
+Init:
+s dPump1 Setting 10
+s dPump2 Setting 10
+s dWPump3 Setting 10
+s dPump1 Lock kLockDevices
+s dPump2 Lock kLockDevices
+s dWPump3 Lock kLockDevices
+s dSensor1 Lock kLockDevices
+s dSensor2 Lock kLockDevices
+s dWSensor3 Lock kLockDevices
+s dSensor1 On 1
+s dSensor2 On 1
+s dWSensor3 On 1
+loop:
 yield
-move count 0
 
-K1:
-alias Sensor d0
-alias PressReg d3
-move tempMax kTemp1
-move pressMax kPress1
-jal Control
+# Room Temperature
+lb rTemp kHashGasSensor Temperature Average
+sub rTemp rTemp 273.15
+sgt r1 rTemp 15
+sb kHashAirVent On r1
 
-K2:
-bdns Sensor2 K3
-alias Sensor d1
-alias PressReg d4
-move tempMax kTemp2
-move pressMax kPress2
-jal Control
+# Door Control
+sb kHashDoors Open 0
+sge r1 rTemp 80
+sle r2 rTemp -50
+or r0 r1 r2
+sb kHashDoors Lock r0
 
-K3:
-bdns Sensor3 Main
-alias Sensor d2
-alias PressReg d5
-move tempMax kTemp3
-move pressMax kPress3
-jal Control
+GeneralOutline:
+l rPress dSensor1 Pressure
+l rTemp dSensor1 Temperature
+sub rTemp rTemp 273.15
+sgt r1 rPress kMinPressureInOutlines
+sle r2 rTemp kMinTempInGeneralOutlineC
+and r0 r1 r2
+s dPump1 On r0
 
-s db Setting count
-brgtz count 2
-sleep kSleepSec
-j Main
+GasOutline:
+l r0 dSensor2 RatioWater
+l r1 dSensor2 RatioSteam
+add r0 r0 r1 # Sum liquid water and steam ratio
+seqz r3 r0 # not has H2O
+l rPress dSensor2 Pressure
+l rTemp dSensor2 Temperature
+sub rTemp rTemp 273.15
+sgt r1 rPress kMinPressureInOutlines
+sle r2 rTemp kMinTempInGasOutlineC
+and r0 r1 r2 # has pressure and low temp
+and r0 r0 r3 # and no H2O
+s dPump2 On r0
 
-Control:
-s Sensor On 1
-yield
-l r0 Sensor Pressure
-sgt r1 r0 pressMax # 1 if pressure OK
-l r0 Sensor Temperature
-slt r0 r0 tempMax # 1 if temp OK
-Set:
-and r0 r0 r1
-s PressReg On r0
-s Sensor On r1
-add count count r1
-j ra
+WaterOutline:
+l r0 dWSensor3 VolumeOfLiquid
+sgt r1 r0 0.1 # Mimimum of Liquid
+l rTemp dWSensor3 Temperature
+sub rTemp rTemp 273.15
+sle r2 rTemp kMinTempInWaterOutline
+and r0 r1 r2
+s dWPump3 On r0
+
+j loop
