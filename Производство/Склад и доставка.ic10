@@ -1,0 +1,123 @@
+#Printer Ingot Restocker  CowsAreEvil
+#Updated 20/10/2025
+#Will monitor ingot levels in the priters and
+#dispense ingots from a vending machine to the p[rinters as needed.
+#Must use logic sorters for delivering the ingots.
+# DEVICES
+alias dVending d0
+alias button d1
+define kHashLogicSorter 873418029 # Logic Sorter!
+# STACK
+lb r0 HASH("StructureAutolathe") ReferenceId Average
+push r0
+lbn r0 kHashLogicSorter HASH("Logic Sorter Autolathe") ReferenceId Average
+push r0
+lb r0 HASH("StructureElectronicsPrinter") ReferenceId Average
+push r0
+lbn r0 kHashLogicSorter HASH("Logic Sorter Electronics Printer") ReferenceId Average
+push r0
+lb r0 HASH("StructureHydraulicPipeBender") ReferenceId Average
+push r0
+lbn r0 kHashLogicSorter HASH("Logic Sorter Hydraulic Pipe Bend") ReferenceId Average
+push r0
+lb r0 HASH("StructureToolManufactory") ReferenceId Average
+push r0
+lbn r0 kHashLogicSorter HASH("Logic Sorter Tool Sorter") ReferenceId Average
+push r0
+#Add more printers here paird with their sorter.
+#push [printer reference ID]
+#push [logic sorter reference ID]
+
+# REGISTERS
+alias maxstack r15
+alias oldimport r14
+alias printer r13
+alias sorter r12
+alias ingot r11
+
+define NOREQUEST -1
+move maxstack sp
+Loop:
+brnez sp 3
+move sp maxstack
+s db Setting ingot
+pop sorter
+pop printer
+
+checkIngots:
+yield
+l r0 printer Open
+bnez r0 Loop
+l r0 printer On
+beqz r0 Loop
+move ingot NOREQUEST
+lr r1 printer Contents -666742878 #Reagent Iron
+slt r1 r1 50
+lr r0 printer Required -666742878 #Reagent Iron
+max r0 r0 r1
+select ingot r0 -1301215609 ingot #Ingot Iron
+lr r1 printer Contents -1172078909 #Reagent Copper
+slt r1 r1 50
+lr r0 printer Required -1172078909 #Reagent Copper
+max r0 r0 r1
+select ingot r0 -404336834 ingot #Ingot Copper
+lr r1 printer Contents -409226641 #Reagent Gold
+slt r1 r1 50
+lr r0 printer Required -409226641 #Reagent Gold
+max r0 r0 r1
+select ingot r0 226410516 ingot #Ingot Gold
+lr r0 printer Required -2002530571 #Reagent Lead
+select ingot r0 2134647745 ingot #Ingot Lead
+lr r0 printer Required 556601662 #Reagent Nickel
+select ingot r0 -1406385572 ingot #Ingot Nickel
+lr r1 printer Contents -1195893171 #Reagent Silicon
+slt r1 r1 50
+lr r0 printer Required -1195893171 #Reagent Silicon
+max r0 r0 r1
+select ingot r0 -290196476 ingot #Ingot Silicon
+lr r0 printer Required 687283565 #Reagent Silver
+select ingot r0 -929742000 ingot #Ingot Silver
+lr r0 printer Required 1731241392 #Reagent Constantan
+select ingot r0 1058547521 ingot #Ingot Constantan
+lr r0 printer Required 478264742 #Reagent Electrum
+select ingot r0 502280180 ingot #Ingot Electrum
+lr r0 printer Required -626453759 #Reagent Invar
+select ingot r0 -297990285 ingot #Ingot Invar
+lr r0 printer Required -1206542381 #Reagent Solder
+select ingot r0 -82508479 ingot #Ingot Solder
+lr r1 printer Contents 1331613335 #Reagent Steel
+slt r1 r1 50
+lr r0 printer Required 1331613335 #Reagent Steel
+max r0 r0 r1
+select ingot r0 -654790771 ingot #Ingot Steel
+lr r0 printer Required -1493155787 #Reagent Astroloy
+select ingot r0 412924554 ingot #Ingot Astroloy
+lr r0 printer Required 2019732679 #Reagent Hastelloy
+select ingot r0 1579842814 ingot #Ingot Hastelloy
+lr r0 printer Required -586072179 #Reagent Inconel
+select ingot r0 -787796599 ingot #Ingot Inconel
+lr r0 printer Required -500544800 #Reagent Stellite
+select ingot r0 -1897868623 ingot #Ingot Stellite
+lr r0 printer Required 1787814293 #Reagent Waspaloy
+select ingot r0 156348098 ingot #Ingot Waspaloy
+s db Setting ingot
+beq ingot NOREQUEST Loop
+brdns dVending 2
+s dVending RequestHash ingot
+move r1 1
+sll r1 r1 8
+add r1 r1 SorterInstruction.LimitNextExecutionByCount
+put sorter 0 r1
+sll ingot ingot 8
+add ingot ingot SorterInstruction.FilterPrefabHashEquals
+put sorter 1 ingot
+l oldimport printer ImportCount
+checkIngotArrived:
+yield
+checkButton:
+brdns button 3
+l r0 button Setting
+beq r0 1 Loop
+l r0 printer ImportCount
+beq r0 oldimport checkIngotArrived
+j Loop
