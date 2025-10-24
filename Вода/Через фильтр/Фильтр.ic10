@@ -1,0 +1,83 @@
+# Settings for start filtrarion
+define kMaxPressureOutput 5000 # kpA
+define kMaxWaterMolesOutput 60 # moles
+define kMinPressureOutputForStart 30 # kPa
+# DEVICES
+alias Slider d0 # optional
+alias PumpOut2 d1 # optional
+# REGISTERS
+alias empty r15
+alias disable r14
+alias filterState r13
+move disable 0
+move empty 0
+s db Open 0
+Initialisation:
+select r0 disable 0 1 # inverting signal
+brdns Slider 2
+s Slider Lock r0 # invert signal
+brdns PumpOut2 4
+s PumpOut2 Setting 10
+s PumpOut2 Lock r0 # invert signal
+s PumpOut2 On 0
+s db Mode disable
+s db On r0 # invert signal
+beqz disable Main
+yield
+j 0 # simulate first start again
+Main:
+yield
+
+l disable db Open
+bnez disable Initialisation
+
+CheckFilters:
+ls r0 db 0 Occupied
+ls r1 db 1 Occupied
+add r2 r0 r1
+max r2 r2 1
+ls r0 db 0 OccupantHash
+ls r1 db 1 OccupantHash
+seq r0 r0 r1 # 1 if equals
+select r2 r0 r2 1
+ls r0 db 0 Quantity
+ls r1 db 1 Quantity
+breq r2 2 3
+min r0 r0 r1
+breq r2 1 2
+add r0 r0 r1 # summ, 0-200
+div r0 r0 r2 # x / count filters
+mul r0 r0 0.01 # x * 0.01
+slt r1 r0 0.1 # enable slider if < 10%
+seqz empty r0 # 1 if x == 0
+SetSlider:
+brdns Slider 3 # skip if not connected
+s Slider Setting r0 # precent
+s Slider On r1 # enable/disable
+
+move r1 0
+beq empty 1 SetFilter
+l r0 db Mode
+select r2 r0 kMaxPressureOutput kMinPressureOutputForStart
+# Gas Pressure Output Control
+l r0 db PressureOutput
+slt r1 r0 r2
+beqz r1 SetFilter
+# Water Moles Output Control
+l r2 db RatioSteamOutput
+l r3 db RatioWaterOutput
+add r0 r2 r3
+l r2 db TotalMolesOutput
+mul r3 r2 r0
+slt r2 r3 kMaxWaterMolesOutput
+# Select State
+and r1 r1 r2
+SetFilter:
+s db Mode r1
+brdns PumpOut2 2
+s PumpOut2 On r1
+
+beqz empty Main
+sb -1535893860 On 1 # Enabled flash light
+s db Open 1 # disable filter next tick
+j Main

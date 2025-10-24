@@ -1,0 +1,101 @@
+define kGasPressureOutputMax 25000 # kPa
+# PID constants
+define kP 0.2
+#define kI 0
+define kD 0.3
+define kDT 1.0
+define kMaxOut 3000
+define kMinOut 0
+
+# DEVICES
+alias Combuster db
+alias LedState d0
+alias RegPres d1
+
+# REGISTERS
+alias rFuelEmpty r15
+alias rMode r14
+alias rLowPressureOut r13
+alias rError r12
+alias rProportional  r11
+alias rDerivative r10
+alias rLastError r9
+
+Init:
+move rLastError 0
+move r0 0
+s Combuster Open 0 # Closing
+Start:
+s Combuster Mode r0
+beqz r0 Main
+s Combuster On 0
+yield
+j 0 # simulate first start again
+
+Main:
+yield
+l r0 Combuster Open
+bnez r0 Start
+
+CheckFuel:
+l r0 Combuster PressureInput
+slez r0 r0
+and rFuelEmpty rLowPressureOut r0
+
+CheckOutput:
+# Holding set pressure
+l r0 Combuster PressureOutput
+slt rLowPressureOut r0 kGasPressureOutputMax
+
+RegInput:
+# DEBUG
+#l r0 $10423 Setting
+#mul rKP r0 0.1
+#l r0 $10424 Setting
+#mul rKI r0 0.001
+#l r0 $10425 Setting
+#mul rKD r0 0.01
+#move r0 0
+#l r1 $10461 Setting
+
+#s $1041E Setting rKP
+#s $1041F Setting rKI
+#s $10420 Setting rKD
+#beqz r1 WorkStatus
+
+l r0 Combuster PressureOutput
+# Proportional
+sub rError kGasPressureOutputMax r0
+mul rProportional rError kP
+# Integral
+#mul r0 rError kI
+#mul r0 r0 kDT
+#add rIntegral rIntegral r0
+# Derivative
+sub r0 rError rLastError
+mul r0 r0 kD
+div rDerivative r0 kDT
+move rLastError rError
+#s $10479 Setting rError
+#s $1041E Setting rProportional
+#s $1041F Setting rIntegral
+#s $10420 Setting rDerivative
+# Final output
+add r0 rProportional rDerivative
+min r0 r0 kMaxOut
+max r0 r0 kMinOut
+
+WorkStatus:
+s Combuster Mode rLowPressureOut
+s RegPres Setting r0
+sgtz r1 r0
+s RegPres On r1
+
+Notification:
+bdns LedState Main
+select r1 rLowPressureOut Color.Orange Color.Green
+select r1 rFuelEmpty Color.Red r1
+s LedState Color r1
+s LedState On rMode
+
+j Main

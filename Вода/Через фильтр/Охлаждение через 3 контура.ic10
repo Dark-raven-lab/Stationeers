@@ -1,0 +1,87 @@
+define kMinTempInGeneralOutlineC 100 # c
+define kMinTempInWaterOutline 25 # C
+define kMinTempInGasOutlineC 25 # C
+define kMinPressureInOutlines 30 # kPa
+define kLockDevices 1
+define kRoomTemperature 20
+
+# General outline
+alias dSensor1 d0
+alias dPump1 d3
+# Gas outline
+alias dSensor2 d1
+alias dPump2 d4
+# Water outline
+alias dWSensor3 d2
+alias dWPump3 d5
+# Const devices
+define kHashOccupancySensor 322782515
+define kHashGasSensor -1252983604
+define kHashAirVent -1129453144
+define kHashDoors -324331872
+define kHashLight 797794350 # long
+# REGISTERS
+alias rTemp r15
+alias rPress r14
+
+Init:
+s dPump1 Setting 10
+s dPump2 Setting 10
+s dWPump3 Setting 10
+s dPump1 Lock kLockDevices
+s dPump2 Lock kLockDevices
+s dWPump3 Lock kLockDevices
+s dSensor1 Lock kLockDevices
+s dSensor2 Lock kLockDevices
+s dWSensor3 Lock kLockDevices
+s dSensor1 On 1
+s dSensor2 On 1
+s dWSensor3 On 1
+sb kHashAirVent Mode 1
+sb kHashAirVent PressureInternal 3000
+loop:
+yield
+# Room Temperature
+lb rTemp kHashGasSensor Temperature Average
+sub rTemp rTemp 273.15
+sgt r1 rTemp kRoomTemperature
+sb kHashAirVent On r1
+
+# Door Control
+sb kHashDoors Open 0
+
+# Light Control
+lb r0 kHashOccupancySensor Activate Maximum
+sb kHashLight On r0
+
+GeneralOutline:
+l rPress dSensor1 Pressure
+l rTemp dSensor1 Temperature
+sub rTemp rTemp 273.15
+sgt r1 rPress kMinPressureInOutlines
+sle r2 rTemp kMinTempInGeneralOutlineC
+and r0 r1 r2
+s dPump1 On r0
+
+GasOutline:
+l r0 dSensor2 RatioWater
+seqz r3 r0 # not has water
+l rPress dSensor2 Pressure
+l rTemp dSensor2 Temperature
+sub rTemp rTemp 273.15
+sgt r1 rPress kMinPressureInOutlines
+sle r2 rTemp kMinTempInGasOutlineC
+and r0 r1 r2
+and r0 r0 r3
+s dPump2 On r0
+
+WaterOutline:
+l r0 dWSensor3 VolumeOfLiquid
+sgt r1 r0 0.1 # Mimimum of Liquid
+l rTemp dWSensor3 Temperature
+sub rTemp rTemp 273.15
+sle r2 rTemp kMinTempInWaterOutline
+and r0 r1 r2
+s dWPump3 On r0
+
+j loop
