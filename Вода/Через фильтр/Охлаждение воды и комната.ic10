@@ -2,7 +2,7 @@ define kMaxLiquidInGeneralOutline 3.5 # L
 define kMinTempInGeneralOutlineC 100 # C
 define kMinTempInWaterOutline 25 # C
 define kMinTempInGasOutlineC 25 # C
-define kRoomTemperature 10 # 
+define kRoomTemperature 10 #
 define kLockDevices 1
 
 # General outline
@@ -39,7 +39,7 @@ s dSensor1 On 1
 s dSensor2 On 1
 s dWSensor On 1
 sb kHashAirVent Mode 1
-sb kHashAirVent PressureInternal 3000
+sb kHashAirVent PressureInternal 1500
 
 loop:
 yield
@@ -67,6 +67,8 @@ l r1 dSensor1 VolumeOfLiquid
 sge r1 r1 kMaxLiquidInGeneralOutline # stress limit
 or r0 r0 r1
 s dPump1 On r0
+beqz r0 GasOutline
+s dSensor2 On 1
 
 GasOutline:
 l r0 dSensor2 On
