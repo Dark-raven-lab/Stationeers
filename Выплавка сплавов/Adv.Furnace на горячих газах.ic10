@@ -1,7 +1,13 @@
+define kMaxSpeedOutput 10
+define kMaxSpeedInput 100
+define kTempHotGas 1000 # Temperature (K) of the hot tank
+
 alias RegIngot d0
 alias Button d1
 alias AdvFurnace d2
 alias PumpCool d3
+alias PumpOutHot d4
+alias PumpOutWaste d5
 
 alias minPressure r15
 alias maxPressure r14
@@ -21,7 +27,8 @@ s AdvFurnace Open 0
 s AdvFurnace On 0
 s AdvFurnace SettingOutput 0
 s AdvFurnace SettingInput 0
-s PumpCool On 0
+sb -321403609 On 0 # Volume Pumps
+sb -321403609 Setting 10
 sb 1944485013 On 0 # LED
 main:
 yield
@@ -71,14 +78,24 @@ select r0 hotSupply Color.Orange r0
 select r0 highTemp Color.Blue r0
 sb 1944485013 Color r0
 
-# INPUT GAS
+# OUTPUT GAS
 l r1 AdvFurnace SettingOutput
-brge r1 100 2   # jump if >=
+brge r1 kMaxSpeedOutput 2   # jump if >=
  add r1 r1 2
 select r1 drop r1 0   # 0 if wait
 s AdvFurnace SettingOutput r1
+# Choosing route
+brdns PumpOutHot 8
+l r0 AdvFurnace Temperature # Kelvin!
+sgt r1 r0 kTempHotGas
+and r1 r1 drop
+s PumpOutHot On r1
+seqz r0 r1
+and r0 r0 drop
+s PumpOutWaste On r0
 
 # COOLING
+brdns PumpCool 7
 s PumpCool On highTemp
 l r1 PumpCool Setting
 brge r1 10 2      # j
@@ -86,9 +103,9 @@ brge r1 10 2      # j
 select r1 highTemp r1 0       # 0 if w
 s PumpCool Setting r1
 
-# OUTPUT GAS
+# ADD HOT GAS
 l r1 AdvFurnace SettingInput
-brge r1 100 2
+brge r1 kMaxSpeedInput 2
  add r1 r1 2 # l/sec
 select r1 hotSupply r1 0
 s AdvFurnace SettingInput r1
