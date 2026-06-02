@@ -1,0 +1,26 @@
+# Setting logic sorter
+
+alias LogicSorter d1
+
+alias ingot r15
+
+Init:
+jal SaveHash
+SettingLogicSorter:
+move r0 sp # save position
+pop ingot # read hash ingot
+sll ingot ingot 8
+add ingot ingot SorterInstruction.FilterPrefabHashNotEquals
+put LogicSorter r0 ingot
+bgtz sp SettingLogicSorter
+s LogicSorter On 1
+
+SaveHash:
+push 1715917521 # ItemCookedCondensedMilk
+push 1344773148 # ItemCookedCorn
+push -1076892658 # ItemCookedMushroom
+push 1849281546 # ItemCookedPumpkin
+push 2013539020 # ItemCookedRice
+push 1353449022 # ItemCookedSoybean
+push -709086714 # ItemCookedTomato
+j ra
